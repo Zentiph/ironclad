@@ -5,14 +5,20 @@ Argument validation functions, including type and value enforcing.
 
 import functools
 import inspect
+from typing import Callable, ParamSpec, Tuple, Type, TypeVar, Union
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
-def enforce_types(**type_map):
+def enforce_types(
+    **type_map: Union[Type, Tuple[Type, ...]],
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that enforces the types of function parameters.
 
     Arguments
     ---------
-    type_map : Dict[str, Type | Tuple[Type, ...]]
+    type_map : Type | Tuple[Type, ...]
         A dictionary mapping argument names to expected type(s)
     """
 
@@ -40,7 +46,7 @@ def enforce_types(**type_map):
                     type_string = (
                         type_or_tuple.__name__
                         if isinstance(type_or_tuple, type)
-                        else " or ".join(t for t in type_or_tuple)
+                        else " or ".join(t.__name__ for t in type_or_tuple)
                     )
 
                     raise TypeError(
