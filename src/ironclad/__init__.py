@@ -12,10 +12,13 @@ A lightweight toolkit for enforcing strict runtime contracts
 
 __all__ = [
     "predicates",
-    "DEFAULT_ENFORCE_OPTIONS",
-    "EnforceOptions",
+    "coerce_types",
+    "enforce_annotations",
     "enforce_types",
     "enforce_values",
+    "type_repr",
+    "DEFAULT_ENFORCE_OPTIONS",
+    "EnforceOptions",
 ]
 
 __title__ = "ironclad"
@@ -27,8 +30,10 @@ __copyright__ = "Copyright 2025-present Zentiph"
 
 from . import predicates
 from .arg_validation import (
-    DEFAULT_ENFORCE_OPTIONS,
-    EnforceOptions,
+    coerce_types,
+    enforce_annotations,
     enforce_types,
     enforce_values,
 )
+from .repr import type_repr
+from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions

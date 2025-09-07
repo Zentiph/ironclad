@@ -7,26 +7,25 @@ Argument validation functions, including type and value enforcing.
 :license: MIT; see LICENSE.md for more details
 """
 
+# TODO: redo docstrings once made prettier errors
+
 import functools
 import inspect
 import reprlib
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from typing import (
-    Annotated,
-    Any,
     Callable,
-    Literal,
+    Dict,
     ParamSpec,
     Tuple,
     Type,
     TypeVar,
     Union,
-    get_args,
-    get_origin,
+    get_type_hints,
 )
 
+from ._util import as_predicate, fast_bind, make_plan, matches_hint, to_call
 from .predicates import Predicate
+from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
@@ -36,105 +35,12 @@ _SHORT.maxstring = 80
 _SHORT.maxother = 80
 
 
-@dataclass(frozen=True)
-class EnforceOptions:
-    """A configuration of options for the enforce_types decorator."""
-
-    allow_subclasses: bool = True
-    """Whether to allow subclasses to count as a valid type for a parameter."""
-    check_defaults: bool = True
-    """Whether to apply defaults for missing arguments."""
-    strict_bools: bool = False
-    """Whether to strictly disallow bools to count as integers."""
-
-
-DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
-
-
-# pylint:disable=too-many-branches,too-many-return-statements
-def _matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
-    if hint is Any:  # can be anything
-        return True
-
-    if hint is None or hint is type(None):  # hint is None, so x must be
-        return x is None
-
-    origin = get_origin(hint)
-
-    if origin is Annotated:  # check if the base type matches
-        base, *_ = get_args(hint)
-        return _matches_hint(x, base, opts)
-
-    if origin is Literal:  # see if x is a value in the literal
-        return x in set(get_args(hint))
-
-    if origin is type:  # see if x is a subclass of the type inside type[T]
-        (t,) = get_args(hint) or (object,)
-        return isinstance(x, type) and (t is object or issubclass(x, t))
-
-    if origin is tuple:
-        args = get_args(hint)
-        if len(args) == 2 and args[1] is ...:  # any size tuple (tuple[T, ...])
-            return isinstance(
-                x, tuple
-            ) and all(  # make sure all items inside the tuple match the type
-                _matches_hint(elem, args[0], opts) for elem in x
-            )
-        return (
-            isinstance(x, tuple)
-            and len(x) == len(args)
-            and all(  # make sure all items inside the tuple match the type
-                _matches_hint(elem, ht, opts) for elem, ht in zip(x, args)
-            )
-        )
-
-    if origin in (list, set, frozenset, Sequence):
-        elem = (get_args(hint) or (Any,))[0]
-        pytype = (
-            list
-            if origin is list
-            else (
-                set if origin is set else frozenset if origin is frozenset else Sequence
-            )
-        )
-        return isinstance(x, pytype) and all(_matches_hint(e, elem, opts) for e in x)
-
-    if origin in (dict, Mapping):
-        k_hint, v_hint = get_args(hint) or (Any, Any)
-        return isinstance(x, Mapping) and all(
-            _matches_hint(k, k_hint, opts) and _matches_hint(v, v_hint, opts)
-            for k, v in x.items()
-        )
-
-    if origin is Union:
-        return any(_matches_hint(x, ht, opts) for ht in get_args(hint))
-
-    if isinstance(hint, TypeVar):
-        if hint.__constraints__:
-            return any(_matches_hint(x, ht, opts) for ht in hint.__constraints__)
-        if hint.__bound__:
-            return _matches_hint(x, hint.__bound__, opts)
-        return True
-
-    try:  # normal classes/ABCs, @runtime_checkable Protocols
-        if isinstance(hint, type):
-            if not opts.allow_subclasses:
-                return type(x) is hint  # pylint:disable=unidiomatic-typecheck
-            # separate case for restriction on bools as ints
-            if opts.strict_bools and hint is int:
-                return type(x) is int  # pylint:disable=unidiomatic-typecheck
-
-        return isinstance(x, hint)
-    except TypeError:
-        # fallback for typing objects on older Python versions
-        return origin is not None and _matches_hint(x, origin, opts)
-
-
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     /,
     **type_map: Union[Type, Tuple[Type, ...]],
 ) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
+    # pylint:disable=line-too-long
     """Decorator that enforces the types of function parameters.
     Supports typing types.
 
@@ -143,10 +49,73 @@ def enforce_types(
     options : EnforceOptions, optional
         Any options to change how types are enforced, by default DEFAULT_ENFORCE_OPTIONS
     type_map : Type | Tuple[Type, ...]
-        A dictionary mapping argument names to expected type(s)
+        A mapping of argument names to expected type(s)
+
+    Examples
+    --------
+    Basic usage:
+    >>> from ironclad import enforce_types
+    >>> @enforce_types(enable=bool, limit=int)
+    ... def config(enable, limit)
+    ...     print("Config successful!")
+    ...
+    >>> config(True, 10)
+    Config successful!
+    >>> config(False, 2.3)
+    Traceback (most recent call last):
+      ...
+    TypeError: config(): 'limit' expected type 'int', got 'float' with value 2.3
+
+    Type unions:
+    >>> from ironclad import enforce_types
+    >>> from typing import Union
+    >>> @enforce_types(x=(int, float), y=Union[int, float])
+    ... def add(x, y):
+    ...     return x + y
+    ...
+    >>> add(2, 4.3)
+    6.3
+    >>> add(4.3, 2)
+    6.3
+    >>> add(3, "2.3")
+    Traceback (most recent call last):
+      ...
+    TypeError: add(): 'y' expected type 'Union[int, float]', got 'str' with value '2.3'
+
+    Typing args and kwargs with predicates:
+    >>> from ironclad import enforce_types, predicates
+    >>> @enforce_types(nums=predicates.each(int), meta=predicates.values(str))
+    >>> def func(*nums, **meta):
+    ...     ...
+    ...
+    >>> func(1, 2, kw1="a")
+    >>> func(1, "2", kw1="a")
+    Traceback (most recent call last):
+      ...
+    TypeError: func(): 'nums' expected 'each(<class 'int'>), got 'tuple' with value (1, '2')
+
+
+    With options:
+    >>> class Super:
+    ...     ...
+    ...
+    >>> class Sub(Super):
+    ...     ...
+    ...
+    >>> options = EnforceOptions(allow_subclasses=False)
+    >>> @enforce_types(options, obj=Super)
+    ... def func(obj):
+    ...     print("No subclasses please!")
+    ...
+    >>> func(Super())
+    No subclasses please!
+    >>> func(Sub())
+    Traceback (most recent call last):
+      ...
+    TypeError: func(): 'obj' expected type 'Super', got 'Sub' with value <__main__.Sub object at 0x...>
     """
 
-    def decorator(func):
+    def decorator(func: Callable[_P, _T]):
         sig = inspect.signature(func)
 
         # validate all arguments given exist in the function signature
@@ -154,26 +123,107 @@ def enforce_types(
             if name not in sig.parameters:
                 raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            bound = sig.bind(*args, **kwargs)
-            if options.check_defaults:
-                bound.apply_defaults()
+        plan = make_plan(sig)
 
-            for name, type_or_tuple_or_hint in type_map.items():
-                val = bound.arguments[name]
-                if not _matches_hint(val, type_or_tuple_or_hint, options):
-                    # convert the type(s) to a string
-                    # if a tuple of types, join each type around " or "
-                    type_string = getattr(
-                        type_or_tuple_or_hint, "__name__", str(type_or_tuple_or_hint)
-                    )
+        # compile once
+        validators: Dict[str, Predicate] = {
+            name: as_predicate(spec, options) for name, spec in type_map.items()
+        }
+
+        @functools.wraps(func)
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs):
+            bound = fast_bind(plan, sig, args, kwargs, options.check_defaults)
+
+            for name, pred in validators.items():
+                val = bound[name]
+                if not pred(val):
                     raise TypeError(
-                        f"{func.__qualname__}(): '{name}' expected type '{type_string}', "
+                        f"{func.__qualname__}(): '{name}' expected {pred.msg}, "
                         + f"got '{type(val).__name__}' with value {_SHORT.repr(val)}"
                     )
 
             return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def enforce_annotations(
+    *, check_return: bool = True
+) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
+    """Decorator that enforces the types of function parameters using the function's type hints.
+
+    Parameters
+    ----------
+    check_return : bool, optional
+        Whether to enforce the return type, by default True
+    """
+
+    def decorator(func: Callable[_P, _T]):
+        hints = get_type_hints(func, include_extras=True)
+        param_hints = {k: v for k, v in hints.items() if k != "return"}
+
+        wrapped = enforce_types(**param_hints)(func)
+        if not check_return or "return" not in hints:
+            return wrapped
+
+        @functools.wraps(wrapped)
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs):
+            out = wrapped(*args, **kwargs)
+
+            if not matches_hint(out, hints["return"], DEFAULT_ENFORCE_OPTIONS):
+                raise TypeError(
+                    f"{func.__qualname__}(): return expected "
+                    + f"{hints['return']}, got {type(out).__name__}"
+                )
+
+            return out
+
+        return wrapper
+
+    return decorator
+
+
+def coerce_types(
+    **coercers: Callable[[object], object],
+) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
+    """Decorator that coerces the types of function parameters using coercer functions.
+    This decorator is particularly useful for coercing string arguments into their proper types
+    when using CLI/ENV arguments, web handlers, enums, and JSONs.
+
+    Parameters
+    ----------
+    coercers : Callable[[object], object]
+        A mapping of argument names to coercer functions
+
+    Example(s)
+    ----------
+    >>> import json
+    >>>
+    >>> @coerce_types(limit=int, threshold=float, config=json.loads)
+    ... def run(limit, threshold, config):
+    ...     print(repr(limit), repr(threshold), repr(config))
+    ...
+    >>> run(limit="10", threshold="0.25", config='{"retries": 3}')
+    10 0.25 {'retries': 3}
+    """
+
+    def decorator(func: Callable[_P, _T]):
+        sig = inspect.signature(func)
+        plan = make_plan(sig)
+
+        @functools.wraps(func)
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs):
+            bound = fast_bind(plan, sig, args, kwargs, apply_defaults=True)
+
+            for name, coerce in coercers.items():
+                if name in bound:
+                    bound[name] = coerce(bound[name])
+
+            # rebuild call args and invoke
+            call_args, call_kwargs = to_call(plan, bound)
+            return func(*call_args, **call_kwargs)
 
         return wrapper
 
@@ -185,26 +235,29 @@ def enforce_values(
 ) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
     """Decorator that enforces value constraints on function parameters."""
 
-    def decorator(func):
+    def decorator(func: Callable[_P, _T]):
         sig = inspect.signature(func)
 
         for name in predicate_map:
             if name not in sig.parameters:
                 raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
 
+        plan = make_plan(sig)
+
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            bound = sig.bind(*args, **kwargs)
-            bound.apply_defaults()
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs):
+            bound = fast_bind(plan, sig, args, kwargs, apply_defaults=True)
+
             for name, pred in predicate_map.items():
-                val = bound.arguments[name]
+                val = bound[name]
                 if not pred(val):
                     raise ValueError(
                         f"{func.__qualname__}(): '{name}' failed constraint: "
                         + f"{pred.msg}; got {_SHORT.repr(val)}"
                     )
 
-            return func(*args, **kwargs)
+            call_args, call_kwargs = to_call(plan, bound)
+            return func(*call_args, **call_kwargs)
 
         return wrapper
 
