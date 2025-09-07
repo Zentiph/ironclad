@@ -11,6 +11,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Protocol, TypeVar, Union
 
+from .repr import type_repr
+
 
 class _Comparable(Protocol):
     def __lt__(self, other: "_Comparable") -> bool: ...
@@ -24,7 +26,10 @@ _C = TypeVar("_C", bound=_Comparable)
 
 @dataclass(frozen=True)
 class Predicate:
-    """An object representing a predicate, containing a predicate function and a failure message."""
+    """An object representing a predicate, containing a predicate function and a failure message.
+
+    Predicates can be modified/combined using the logical operators 'and', 'or', and 'not'.
+    """
 
     func: Callable[[Any], bool]
     """Predicate function that determines if a value is accepted by this predicate or not."""
@@ -54,7 +59,24 @@ class Predicate:
         return Predicate(lambda x: not self(x), f"not ({self.msg})")
 
 
-def one_of(values: Iterable[Any]) -> Predicate:  # pylint:disable=redefined-outer-name
+def _ensure_pred(inner: Union[Predicate, Callable[[Any], bool], Any], /) -> Predicate:
+    if isinstance(inner, Predicate):
+        return inner
+
+    # lazy import to prevent circular import
+    from ._util import matches_hint  # pylint:disable=import-outside-toplevel
+    from .types import DEFAULT_ENFORCE_OPTIONS  # pylint:disable=import-outside-toplevel
+
+    # prefer typing-aware matcher
+    return Predicate(
+        lambda x: matches_hint(x, inner, DEFAULT_ENFORCE_OPTIONS),
+        f"of type {type_repr(inner)}",
+    )
+
+
+def one_of(
+    values: Iterable[Any], /  # pylint:disable=redefined-outer-name
+) -> Predicate:
     """Create a predicate that checks if a value is in the given iterable.
 
     Parameters
@@ -69,10 +91,10 @@ def one_of(values: Iterable[Any]) -> Predicate:  # pylint:disable=redefined-oute
     """
 
     s = set(values)
-    return Predicate(lambda x: x in s, f"one_of({sorted(s)})")
+    return Predicate(lambda x: x in s, f"one of {sorted(s)}")
 
 
-def between(low: _C, high: _C, *, inclusive: bool = True) -> Predicate:
+def between(low: _C, high: _C, /, *, inclusive: bool = True) -> Predicate:
     """Create a predicate that checks if a value is between two values.
 
     Parameters
@@ -92,9 +114,9 @@ def between(low: _C, high: _C, *, inclusive: bool = True) -> Predicate:
 
     if inclusive:
         return Predicate(
-            lambda x: low <= x <= high, f"between({low}, {high}, inclusive)"
+            lambda x: low <= x <= high, f"between {low} and {high}, inclusive"
         )
-    return Predicate(lambda x: low < x < high, f"between({low}, {high})")
+    return Predicate(lambda x: low < x < high, f"between {low} and {high}, exclusive")
 
 
 def non_empty() -> Predicate:
@@ -106,7 +128,7 @@ def non_empty() -> Predicate:
         A predicate that checks if the given value is sized and not empty
     """
 
-    return Predicate(lambda x: hasattr(x, "__len__") and len(x) > 0, "non_empty")
+    return Predicate(lambda x: hasattr(x, "__len__") and len(x) > 0, "non empty")
 
 
 def regex(pattern: str, flags: int = 0) -> Predicate:
@@ -128,13 +150,16 @@ def regex(pattern: str, flags: int = 0) -> Predicate:
     rx = re.compile(pattern, flags)
     return Predicate(
         lambda x: isinstance(x, str) and rx.fullmatch(x) is not None,
-        f"regex/{pattern}/",
+        f"matches regex/{pattern}/",
     )
 
 
-def each(inner: Union[Predicate, Callable[[Any], bool]]) -> Predicate:
+def each(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:
     """Create a predicate that checks if all the elements
     in a given iterable match the given predicate.
+
+    This predicate does not treat strings, bytes, or bytearrays as iterables;
+    they should instead be converted to another iterable type.
 
     Parameters
     ----------
@@ -147,11 +172,43 @@ def each(inner: Union[Predicate, Callable[[Any], bool]]) -> Predicate:
         A predicate that checks if all the elements in an iterable match the given predicate.
     """
 
-    pred = inner if isinstance(inner, Predicate) else Predicate(inner, "predicate")
-    return Predicate(lambda it: all(pred(ele) for ele in it), f"each({pred.msg})")
+    pred = _ensure_pred(inner)
+
+    def _check(it):
+        if isinstance(it, (str, bytes, bytearray)):
+            return False
+        try:
+            iterator = iter(it)
+        except TypeError:
+            return False
+        return all(pred(ele) for ele in iterator)
+
+    return Predicate(_check, f"all elements {pred.msg}")
 
 
-def values(inner: Union[Predicate, Callable[[Any], bool]]) -> Predicate:
+def keys(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:
+    """Create a predicate that checks if all the keys
+    in a given dictionary match the given predicate.
+
+    Parameters
+    ----------
+    inner : Predicate | Callable[[Any], bool]
+        The inner predicate
+
+    Returns
+    -------
+    Predicate
+        A predicate that checks if all the keys in a given dictionary match the given predicate.
+    """
+
+    pred = _ensure_pred(inner)
+    return Predicate(
+        lambda d: all(pred(key) for key in getattr(d, "keys", lambda: [])()),
+        f"for each key: {pred.msg}",
+    )
+
+
+def values(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:
     """Create a predicate that checks if all the values
     in a given dictionary match the given predicate.
 
@@ -166,8 +223,46 @@ def values(inner: Union[Predicate, Callable[[Any], bool]]) -> Predicate:
         A predicate that checks if all the values in a given dictionary match the given predicate.
     """
 
-    pred = inner if isinstance(inner, Predicate) else Predicate(inner, "predicate")
+    pred = _ensure_pred(inner)
     return Predicate(
         lambda d: all(pred(val) for val in getattr(d, "values", lambda: [])()),
-        f"values({pred.msg})",
+        f"for each value: {pred.msg}",
+    )
+
+
+def items(
+    key_predicate: Union[Predicate, Callable[[Any], bool]],
+    value_predicate: Union[Predicate, Callable[[Any], bool]],
+    /,
+) -> Predicate:
+    """Create a predicate that checks if all the items
+    in a given dictionary match the given predicates.
+
+    Parameters
+    ----------
+    key_predicate : Union[Predicate, Callable[[Any], bool]]
+        The predicate for the keys
+    value_predicate : Union[Predicate, Callable[[Any], bool]]
+        The predicate for the values
+
+    Returns
+    -------
+    Predicate
+        A predicate that checks if all the items in a given dictionary match the given predicates.
+    """
+
+    key_validator = (
+        key_predicate
+        if isinstance(key_predicate, Predicate)
+        else Predicate(key_predicate, "predicate")
+    )
+    val_validator = (
+        value_predicate
+        if isinstance(value_predicate, Predicate)
+        else Predicate(value_predicate, "predicate")
+    )
+    return Predicate(
+        lambda d: hasattr(d, "items")
+        and all(key_validator(k) and val_validator(v) for k, v in d.items()),
+        f"for each key: {key_validator.msg} and for each value: {val_validator.msg}",
     )
