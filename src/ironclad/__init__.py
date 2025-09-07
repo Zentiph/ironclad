@@ -9,7 +9,7 @@ A lightweight toolkit for enforcing strict runtime contracts
 :license: MIT; see LICENSE for more details.
 """
 
-__all__ = ["enforce_types"]
+__all__ = ["DEFAULT_ENFORCE_OPTIONS", "EnforceOptions", "enforce_types"]
 
 __title__ = "ironclad"
 __author__ = "Zentiph"
@@ -18,4 +18,4 @@ __copyright__ = "Copyright 2025-present Zentiph"
 # __version__ =
 # TODO: add version parse from version info
 
-from .arg_validation import enforce_types
+from .arg_validation import DEFAULT_ENFORCE_OPTIONS, EnforceOptions, enforce_types
