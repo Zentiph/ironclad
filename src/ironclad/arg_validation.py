@@ -1,6 +1,10 @@
 """arg_validation.py
 
 Argument validation functions, including type and value enforcing.
+
+:authors: Zentiph
+:copyright: (c) 2025-present Zentiph
+:license: MIT; see LICENSE.md for more details
 """
 
 import functools
@@ -22,6 +26,8 @@ from typing import (
     get_origin,
 )
 
+from .predicates import Predicate
+
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
 
@@ -32,9 +38,14 @@ _SHORT.maxother = 80
 
 @dataclass(frozen=True)
 class EnforceOptions:
+    """A configuration of options for the enforce_types decorator."""
+
     allow_subclasses: bool = True
+    """Whether to allow subclasses to count as a valid type for a parameter."""
     check_defaults: bool = True
+    """Whether to apply defaults for missing arguments."""
     strict_bools: bool = False
+    """Whether to strictly disallow bools to count as integers."""
 
 
 DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
@@ -129,6 +140,8 @@ def enforce_types(
 
     Arguments
     ---------
+    options : EnforceOptions, optional
+        Any options to change how types are enforced, by default DEFAULT_ENFORCE_OPTIONS
     type_map : Type | Tuple[Type, ...]
         A dictionary mapping argument names to expected type(s)
     """
@@ -139,10 +152,7 @@ def enforce_types(
         # validate all arguments given exist in the function signature
         for name in type_map:
             if name not in sig.parameters:
-                raise ValueError(
-                    f"Argument to enforce '{name}' not found "
-                    + f"in function signature of '{func.__name__}'"
-                )
+                raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -161,6 +171,37 @@ def enforce_types(
                     raise TypeError(
                         f"{func.__qualname__}(): '{name}' expected type '{type_string}', "
                         + f"got '{type(val).__name__}' with value {_SHORT.repr(val)}"
+                    )
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def enforce_values(
+    **predicate_map: Predicate,
+) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
+    """Decorator that enforces value constraints on function parameters."""
+
+    def decorator(func):
+        sig = inspect.signature(func)
+
+        for name in predicate_map:
+            if name not in sig.parameters:
+                raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+            for name, pred in predicate_map.items():
+                val = bound.arguments[name]
+                if not pred(val):
+                    raise ValueError(
+                        f"{func.__qualname__}(): '{name}' failed constraint: "
+                        + f"{pred.msg}; got {_SHORT.repr(val)}"
                     )
 
             return func(*args, **kwargs)
