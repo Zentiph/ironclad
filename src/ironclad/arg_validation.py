@@ -7,7 +7,26 @@ Argument validation functions, including type and value enforcing.
 :license: MIT; see LICENSE.md for more details
 """
 
-# TODO: redo docstrings once made prettier errors
+# TODO: add details to errors regarding options
+#       so if allow_subclasses=False, mention no subs allowed
+
+# TODO: known bug, needs fix
+# >>> @enforce_types(EnforceOptions(strict_bools=False), i=int | float)
+# ... def f(i):
+# ...     ...
+# ...
+# >>> f(1.2)
+# >>> f("a")
+# Traceback (most recent call last):
+#   File "<python-input-17>", line 1, in <module>
+#     f("a")
+#     ~^^^^^
+#   File "C:\Users\gavin\OneDrive\Desktop\Programming\Projects\ironclad\src\ironclad\arg_validation.py", line 175, in wrapper
+#     raise TypeError(
+#     ...<3 lines>...
+#     )
+# TypeError: f(): 'i' expected 'int or float' , got 'str' with value 'a'
+# >>> f(True)
 
 import functools
 import inspect
@@ -25,6 +44,7 @@ from typing import (
 
 from ._util import as_predicate, fast_bind, make_plan, matches_hint, to_call
 from .predicates import Predicate
+from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
 _P = ParamSpec("_P")
@@ -55,20 +75,22 @@ def enforce_types(
     --------
     Basic usage:
     >>> from ironclad import enforce_types
+    >>>
     >>> @enforce_types(enable=bool, limit=int)
     ... def config(enable, limit)
-    ...     print("Config successful!")
+    ...     print("Config changed")
     ...
     >>> config(True, 10)
-    Config successful!
+    Config changed
     >>> config(False, 2.3)
     Traceback (most recent call last):
       ...
-    TypeError: config(): 'limit' expected type 'int', got 'float' with value 2.3
+    TypeError: config(): 'limit' expected 'int' (no bools as ints), got 'float' with value 2.3
 
-    Type unions:
+    Type unions (native Python style and typing style):
     >>> from ironclad import enforce_types
     >>> from typing import Union
+    >>>
     >>> @enforce_types(x=(int, float), y=Union[int, float])
     ... def add(x, y):
     ...     return x + y
@@ -80,22 +102,40 @@ def enforce_types(
     >>> add(3, "2.3")
     Traceback (most recent call last):
       ...
-    TypeError: add(): 'y' expected type 'Union[int, float]', got 'str' with value '2.3'
+    TypeError: add(): 'y' expected 'int or float', got 'str' with value '2.3'
+
+    Typing module support:
+    >>> from ironclad import enforce_types
+    >>> from typing import Literal
+    >>>
+    >>> @enforce_types(level=Literal[0, 1, 2, 3, 4], msg=str)
+    ... def log(level, msg):
+    ...     print("Logging...")
+    ...
+    >>> log(2, "Uh oh")
+    Logging...
+    >>> log(6, "BIG UH OH")
+    Traceback (most recent call last):
+      ...
+    TypeError: log(): 'level' expected '0 or 1 or 2 or 3 or 4', got 'int' with value 6
 
     Typing args and kwargs with predicates:
     >>> from ironclad import enforce_types, predicates
-    >>> @enforce_types(nums=predicates.each(int), meta=predicates.values(str))
-    >>> def func(*nums, **meta):
-    ...     ...
+    >>>
+    >>> @enforce_types(nos=predicates.each(int), meta=predicates.values(str))
+    >>> def sanitize(*nos, **meta):
+    ...     print("Sanitizing...")
     ...
-    >>> func(1, 2, kw1="a")
-    >>> func(1, "2", kw1="a")
+    >>> sanitize(1, 2, kw1="a")
+    Sanitizing...
+    >>> sanitize(1, "2", kw1="a")
     Traceback (most recent call last):
       ...
-    TypeError: func(): 'nums' expected 'each(<class 'int'>), got 'tuple' with value (1, '2')
-
+    TypeError: sanitize(): 'nos' expected all elements are 'int', got 'tuple' with value (1, '2')
 
     With options:
+    >>> from ironclad import enforce_types, EnforceOptions
+    >>>
     >>> class Super:
     ...     ...
     ...
@@ -104,15 +144,15 @@ def enforce_types(
     ...
     >>> options = EnforceOptions(allow_subclasses=False)
     >>> @enforce_types(options, obj=Super)
-    ... def func(obj):
+    ... def approve(obj):
     ...     print("No subclasses please!")
     ...
-    >>> func(Super())
+    >>> approve(Super())
     No subclasses please!
-    >>> func(Sub())
+    >>> approve(Sub())
     Traceback (most recent call last):
       ...
-    TypeError: func(): 'obj' expected type 'Super', got 'Sub' with value <__main__.Sub object at 0x...>
+    TypeError: approve(): 'obj' expected 'Super' (no subclasses), got 'Sub' with value <__main__.Sub object at 0x...>
     """
 
     def decorator(func: Callable[_P, _T]):
@@ -137,9 +177,23 @@ def enforce_types(
             for name, pred in validators.items():
                 val = bound[name]
                 if not pred(val):
+                    conditions = "("
+                    if not options.allow_subclasses:
+                        conditions += "no subclasses"
+                    if options.strict_bools and any(
+                        # only add bool info if there's an int in the types
+                        v is int
+                        for v in type_map.values()
+                    ):
+                        if not options.allow_subclasses:
+                            conditions += ", "
+                        conditions += "no bools as ints"
+                    conditions += ")"
+
                     raise TypeError(
-                        f"{func.__qualname__}(): '{name}' expected {pred.msg}, "
-                        + f"got '{type(val).__name__}' with value {_SHORT.repr(val)}"
+                        f"{func.__qualname__}(): '{name}' expected {pred.msg} "
+                        + f"{conditions if conditions != "()" else ""}, "
+                        + f"got '{type_repr(type(val))}' with value {_SHORT.repr(val)}"
                     )
 
             return func(*args, **kwargs)
@@ -175,7 +229,7 @@ def enforce_annotations(
             if not matches_hint(out, hints["return"], DEFAULT_ENFORCE_OPTIONS):
                 raise TypeError(
                     f"{func.__qualname__}(): return expected "
-                    + f"{hints['return']}, got {type(out).__name__}"
+                    + f"{hints['return']}, got {type_repr(type(out))}"
                 )
 
             return out

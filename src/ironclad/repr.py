@@ -27,8 +27,8 @@ _UNION_TYPES = (Union, getattr(types, "UnionType", Union))
 def _name_of_type(tp: Type) -> str:
     if tp is type(None):
         return "None"
-    # prefer short names for builtins, otherwise quantify minimally
-    if getattr(tp, "__module__", "") == "builtins":
+    # prefer short names for builtins or main objects
+    if getattr(tp, "__module__", "") in ("builtins", "__main__"):
         return tp.__name__
     return tp.__module__ + "." + tp.__qualname__
 

@@ -70,7 +70,7 @@ def _ensure_pred(inner: Union[Predicate, Callable[[Any], bool], Any], /) -> Pred
     # prefer typing-aware matcher
     return Predicate(
         lambda x: matches_hint(x, inner, DEFAULT_ENFORCE_OPTIONS),
-        f"of type {type_repr(inner)}",
+        f"'{type_repr(inner)}'",
     )
 
 
@@ -183,7 +183,7 @@ def each(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:
             return False
         return all(pred(ele) for ele in iterator)
 
-    return Predicate(_check, f"all elements {pred.msg}")
+    return Predicate(_check, f"all elements are {pred.msg}")
 
 
 def keys(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:

@@ -14,6 +14,7 @@ from functools import lru_cache
 from typing import Annotated, Any, Literal, Tuple, TypeVar, Union, get_args, get_origin
 
 from ..predicates import Predicate
+from ..repr import type_repr
 from ..types import EnforceOptions
 
 # TODO: make type repr better
@@ -130,12 +131,12 @@ def _opts_key(opts: EnforceOptions, /) -> Tuple[bool, bool, bool]:
 def _hint_pred_cached(hint: Any, opts_key: Tuple[bool, bool, bool], /) -> Predicate:
     # cached wrapper around matches_hint for hashable hints
     opts = EnforceOptions(*opts_key)
-    return Predicate(lambda x: matches_hint(x, hint, opts), f"type({hint})")
+    return Predicate(lambda x: matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
 
 
 def _hint_pred_uncached(hint: Any, opts: EnforceOptions, /) -> Predicate:
     # fallback if hint is unhashable
-    return Predicate(lambda x: matches_hint(x, hint, opts), f"type({hint})")
+    return Predicate(lambda x: matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
 
 
 def as_predicate(spec: Any, options: EnforceOptions) -> Predicate:
