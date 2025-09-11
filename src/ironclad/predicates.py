@@ -64,7 +64,7 @@ def _ensure_pred(inner: Union[Predicate, Callable[[Any], bool], Any], /) -> Pred
         return inner
 
     # lazy import to prevent circular import
-    from ._util import matches_hint  # pylint:disable=import-outside-toplevel
+    from .util import matches_hint  # pylint:disable=import-outside-toplevel
     from .types import DEFAULT_ENFORCE_OPTIONS  # pylint:disable=import-outside-toplevel
 
     # prefer typing-aware matcher

@@ -8,6 +8,7 @@ Types for ironclad.
 """
 
 from dataclasses import dataclass
+from typing import Literal, NamedTuple, TypeAlias
 
 
 @dataclass(frozen=True)
@@ -23,3 +24,13 @@ class EnforceOptions:
 
 
 DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
+
+
+_ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
+
+
+class _VersionInfo(NamedTuple):
+    major: int
+    minor: int
+    micro: int
+    releaselevel: _ReleaseLevel

@@ -68,7 +68,7 @@ def _flatten_union(union: Any) -> List[Any]:
 
 
 def type_repr(  # pylint:disable=too-many-branches,too-many-return-statements
-    hint: Any,
+    hint: Any, /
 ) -> str:
     """Return a pretty, user-facing string for a type hint.
 

@@ -20,20 +20,7 @@ class _Plan:
     need_kwonly_bind: bool
 
 
-def make_plan(sig: inspect.Signature) -> _Plan:
-    """Make a binding plan for a function signature.
-
-    Parameters
-    ----------
-    sig : inspect.Signature
-        The function signature
-
-    Returns
-    -------
-    _Plan
-        The binding plan
-    """
-
+def _make_plan(sig: inspect.Signature) -> _Plan:
     pos, vararg, varkw, need_kwonly = [], None, None, False
     for param in sig.parameters.values():
         if param.kind is inspect.Parameter.POSITIONAL_OR_KEYWORD:
@@ -49,32 +36,13 @@ def make_plan(sig: inspect.Signature) -> _Plan:
     return _Plan(tuple(pos), vararg, varkw, need_kwonly)
 
 
-def fast_bind(  # pylint:disable=too-many-branches
+def _fast_bind(  # pylint:disable=too-many-branches
     plan: _Plan,
     sig: inspect.Signature,
     args: Tuple,
     kwargs: Dict[str, Any],
     apply_defaults: bool,
 ) -> Dict[str, Any]:
-    """Optimized argument binder that only binds what is needed.
-
-    Parameters
-    ----------
-    sig : inspect.Signature
-        The function's signature
-    args : Tuple
-        The function's args
-    kwargs : Dict[str, Any]
-        The function's kwargs
-    apply_defaults : bool
-        Whether to apply default values
-
-    Returns
-    -------
-    Dict[str, Any]
-        The bound arguments
-    """
-
     # fast path if no kw-only/defaults and kwargs only fill tail names
     if plan.need_kwonly_bind:
         bound = sig.bind(*args, **kwargs)
@@ -126,24 +94,9 @@ def fast_bind(  # pylint:disable=too-many-branches
     return mapping
 
 
-def to_call(
+def _to_call(
     plan: _Plan, mapping: Dict[str, Any]
 ) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
-    """Convert bound arguments to function-safe args and kwargs.
-
-    Parameters
-    ----------
-    plan : _Plan
-        The binding plan
-    mapping : Dict[str, Any]
-        The argument mapping
-
-    Returns
-    -------
-    Tuple[Tuple[Any, ...], Dict[str, Any]]
-        The bound arguments as function-safe args and kwargs
-    """
-
     # positional params
     args_list = [mapping[name] for name in plan.pos_names]
 

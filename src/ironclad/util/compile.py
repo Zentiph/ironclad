@@ -11,19 +11,26 @@ Compiled predicates for value/type checks.
 
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
-from typing import Annotated, Any, Literal, Tuple, TypeVar, Union, get_args, get_origin
+from types import UnionType
+from typing import Annotated, Any, Literal, TypeVar, Union, get_args, get_origin
 
 from ..predicates import Predicate
 from ..repr import type_repr
 from ..types import EnforceOptions
 
-# TODO: make type repr better
-#       1. tuples show (<class ...>, class<...>), use better repr
-#       2. typing objects just show the name, so Union[int, float] -> Union, use better repr
-#       3. better show settings to describe why failed (e.g. if no subclasses, say expected no subclasses, etc)
-
 
 CACHE_SIZE = 2048
+
+
+def _spec_contains_int(spec: Any) -> bool:
+    if spec is int:
+        return True
+
+    origin = get_origin(spec)
+    if origin in (Union, UnionType, tuple):
+        return any(_spec_contains_int(arg) for arg in get_args(spec))
+
+    return False
 
 
 # pylint:disable=too-many-branches,too-many-return-statements
@@ -98,7 +105,7 @@ def matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
             for k, v in x.items()
         )
 
-    if origin is Union:
+    if origin in (Union, UnionType):
         return any(matches_hint(x, ht, opts) for ht in get_args(hint))
 
     if isinstance(hint, TypeVar):
@@ -122,19 +129,28 @@ def matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
         return origin is not None and matches_hint(x, origin, opts)
 
 
-def _opts_key(opts: EnforceOptions, /) -> Tuple[bool, bool, bool]:
-    # keep hashable for caching
-    return (opts.allow_subclasses, opts.check_defaults, opts.strict_bools)
-
-
 @lru_cache(maxsize=CACHE_SIZE)
-def _hint_pred_cached(hint: Any, opts_key: Tuple[bool, bool, bool], /) -> Predicate:
+def _hint_pred_cached(
+    hint: Any, /, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
+) -> Predicate:
     # cached wrapper around matches_hint for hashable hints
-    opts = EnforceOptions(*opts_key)
+    opts = EnforceOptions(
+        allow_subclasses=allow_subclasses,
+        check_defaults=check_defaults,
+        strict_bools=strict_bools,
+    )
     return Predicate(lambda x: matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
 
 
-def _hint_pred_uncached(hint: Any, opts: EnforceOptions, /) -> Predicate:
+def _hint_pred_uncached(
+    hint: Any, /, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
+) -> Predicate:
+    # cached wrapper around matches_hint for hashable hints
+    opts = EnforceOptions(
+        allow_subclasses=allow_subclasses,
+        check_defaults=check_defaults,
+        strict_bools=strict_bools,
+    )
     # fallback if hint is unhashable
     return Predicate(lambda x: matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
 
@@ -160,7 +176,11 @@ def as_predicate(spec: Any, options: EnforceOptions) -> Predicate:
         return spec
     try:
         # try to hash
-        return _hint_pred_cached(spec, _opts_key(options))
+        return _hint_pred_cached(
+            spec, options.allow_subclasses, options.check_defaults, options.strict_bools
+        )
     except TypeError:
         # unhashable, don't cache
-        return _hint_pred_uncached(spec, options)
+        return _hint_pred_uncached(
+            spec, options.allow_subclasses, options.check_defaults, options.strict_bools
+        )

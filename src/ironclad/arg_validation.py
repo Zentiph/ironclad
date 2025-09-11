@@ -7,27 +7,6 @@ Argument validation functions, including type and value enforcing.
 :license: MIT; see LICENSE.md for more details
 """
 
-# TODO: add details to errors regarding options
-#       so if allow_subclasses=False, mention no subs allowed
-
-# TODO: known bug, needs fix
-# >>> @enforce_types(EnforceOptions(strict_bools=False), i=int | float)
-# ... def f(i):
-# ...     ...
-# ...
-# >>> f(1.2)
-# >>> f("a")
-# Traceback (most recent call last):
-#   File "<python-input-17>", line 1, in <module>
-#     f("a")
-#     ~^^^^^
-#   File "C:\Users\gavin\OneDrive\Desktop\Programming\Projects\ironclad\src\ironclad\arg_validation.py", line 175, in wrapper
-#     raise TypeError(
-#     ...<3 lines>...
-#     )
-# TypeError: f(): 'i' expected 'int or float' , got 'str' with value 'a'
-# >>> f(True)
-
 import functools
 import inspect
 import reprlib
@@ -42,10 +21,17 @@ from typing import (
     get_type_hints,
 )
 
-from ._util import as_predicate, fast_bind, make_plan, matches_hint, to_call
 from .predicates import Predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
+from .util import (
+    _fast_bind,
+    _make_plan,
+    _spec_contains_int,
+    _to_call,
+    as_predicate,
+    matches_hint,
+)
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
@@ -58,7 +44,7 @@ _SHORT.maxother = 80
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     /,
-    **type_map: Union[Type, Tuple[Type, ...]],
+    **types: Union[Type, Tuple[Type, ...]],
 ) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
     # pylint:disable=line-too-long
     """Decorator that enforces the types of function parameters.
@@ -68,7 +54,7 @@ def enforce_types(
     ---------
     options : EnforceOptions, optional
         Any options to change how types are enforced, by default DEFAULT_ENFORCE_OPTIONS
-    type_map : Type | Tuple[Type, ...]
+    types : Type | Tuple[Type, ...]
         A mapping of argument names to expected type(s)
 
     Examples
@@ -159,20 +145,20 @@ def enforce_types(
         sig = inspect.signature(func)
 
         # validate all arguments given exist in the function signature
-        for name in type_map:
+        for name in types:
             if name not in sig.parameters:
                 raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
 
-        plan = make_plan(sig)
+        plan = _make_plan(sig)
 
         # compile once
         validators: Dict[str, Predicate] = {
-            name: as_predicate(spec, options) for name, spec in type_map.items()
+            name: as_predicate(spec, options) for name, spec in types.items()
         }
 
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
-            bound = fast_bind(plan, sig, args, kwargs, options.check_defaults)
+            bound = _fast_bind(plan, sig, args, kwargs, options.check_defaults)
 
             for name, pred in validators.items():
                 val = bound[name]
@@ -182,8 +168,8 @@ def enforce_types(
                         conditions += "no subclasses"
                     if options.strict_bools and any(
                         # only add bool info if there's an int in the types
-                        v is int
-                        for v in type_map.values()
+                        _spec_contains_int(v)
+                        for v in types.values()
                     ):
                         if not options.allow_subclasses:
                             conditions += ", "
@@ -229,7 +215,7 @@ def enforce_annotations(
             if not matches_hint(out, hints["return"], DEFAULT_ENFORCE_OPTIONS):
                 raise TypeError(
                     f"{func.__qualname__}(): return expected "
-                    + f"{hints['return']}, got {type_repr(type(out))}"
+                    + f"{type_repr(hints['return'])}, got {type_repr(type(out))}"
                 )
 
             return out
@@ -265,18 +251,18 @@ def coerce_types(
 
     def decorator(func: Callable[_P, _T]):
         sig = inspect.signature(func)
-        plan = make_plan(sig)
+        plan = _make_plan(sig)
 
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
-            bound = fast_bind(plan, sig, args, kwargs, apply_defaults=True)
+            bound = _fast_bind(plan, sig, args, kwargs, apply_defaults=True)
 
             for name, coerce in coercers.items():
                 if name in bound:
                     bound[name] = coerce(bound[name])
 
             # rebuild call args and invoke
-            call_args, call_kwargs = to_call(plan, bound)
+            call_args, call_kwargs = _to_call(plan, bound)
             return func(*call_args, **call_kwargs)
 
         return wrapper
@@ -296,11 +282,11 @@ def enforce_values(
             if name not in sig.parameters:
                 raise ValueError(f"Unknown parameter '{name}' in {func.__qualname__}")
 
-        plan = make_plan(sig)
+        plan = _make_plan(sig)
 
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
-            bound = fast_bind(plan, sig, args, kwargs, apply_defaults=True)
+            bound = _fast_bind(plan, sig, args, kwargs, apply_defaults=True)
 
             for name, pred in predicate_map.items():
                 val = bound[name]
@@ -310,7 +296,7 @@ def enforce_values(
                         + f"{pred.msg}; got {_SHORT.repr(val)}"
                     )
 
-            call_args, call_kwargs = to_call(plan, bound)
+            call_args, call_kwargs = _to_call(plan, bound)
             return func(*call_args, **call_kwargs)
 
         return wrapper
