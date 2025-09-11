@@ -28,6 +28,8 @@ from .util import as_predicate
 class multimethod:  # pylint:disable=invalid-name
     """Runtime overloads with type-hint matching."""
 
+    __slots__ = ("options", "_implementations", "__name__")
+
     def __init__(
         self,
         func: Union[Callable, None] = None,
