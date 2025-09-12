@@ -14,6 +14,7 @@ from typing import (
     Any,
     List,
     Literal,
+    Set,
     Type,
     TypeVar,
     Union,
@@ -24,7 +25,7 @@ from typing import (
 _UNION_TYPES = (Union, getattr(types, "UnionType", Union))
 
 
-def _name_of_type(tp: Type) -> str:
+def _name_of_type(tp: Type[Any]) -> str:
     if tp is type(None):
         return "None"
     # prefer short names for builtins or main objects
@@ -37,9 +38,9 @@ def _literal_value_repr(val: Any) -> str:
     return repr(val)
 
 
-def _join_or(parts: Iterable) -> str:
-    seen = set()
-    out = []
+def _join_or(parts: Iterable[Any]) -> str:
+    seen: Set[Any] = set()
+    out: List[Any] = []
     for part in parts:
         if part not in seen:
             out.append(part)
@@ -48,13 +49,13 @@ def _join_or(parts: Iterable) -> str:
 
 
 def _normalize_none(s: str) -> str:
-    # turn NoneType into None when something produces that label
+    # turn NoneType into None
     return "None" if s == "NoneType" else s
 
 
 def _flatten_union(union: Any) -> List[Any]:
     stack = [union]
-    out = []
+    out: List[Any] = []
 
     while stack:
         current = stack.pop()

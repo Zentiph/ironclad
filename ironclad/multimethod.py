@@ -32,7 +32,7 @@ class multimethod:  # pylint:disable=invalid-name
 
     def __init__(
         self,
-        func: Union[Callable, None] = None,
+        func: Union[Callable[..., Any], None] = None,
         /,
         *,
         options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
@@ -51,7 +51,7 @@ class multimethod:  # pylint:disable=invalid-name
             Tuple[
                 inspect.Signature,
                 Dict[str, Callable[[Any], bool]],
-                Callable,
+                Callable[..., Any],
                 Dict[str, Any],
             ]
         ] = []
@@ -61,7 +61,7 @@ class multimethod:  # pylint:disable=invalid-name
             self.overload(func)
             functools.update_wrapper(self, func)
 
-    def overload(self, func: Callable, /) -> multimethod:
+    def overload(self, func: Callable[..., Any], /) -> multimethod:
         """Register a new function overload to this multimethod.
 
         Parameters
@@ -98,7 +98,7 @@ class multimethod:  # pylint:disable=invalid-name
         return self
 
     def __call__(self, *args: Any, **kwargs: Any):
-        matches: List[Tuple[int, Callable]] = []
+        matches: List[Tuple[int, Callable[..., Any]]] = []
 
         for sig, validators, func, norm_annotation in self._implementations:
             try:
@@ -134,7 +134,7 @@ class multimethod:  # pylint:disable=invalid-name
         return matches[0][1](*args, **kwargs)
 
     def _sig_str(self, sig: inspect.Signature, /) -> str:
-        parts = []
+        parts: List[str] = []
 
         for name, param in sig.parameters.items():
             annotation = (
@@ -148,7 +148,7 @@ class multimethod:  # pylint:disable=invalid-name
 
 
 def runtime_overload(
-    func: Callable, /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
+    func: Callable[..., Any], /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
 ) -> multimethod:
     # pylint:disable=line-too-long
     """Turn a function into a multimethod, allowing for runtime overloads.

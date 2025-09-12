@@ -11,6 +11,7 @@ import functools
 import inspect
 import reprlib
 from typing import (
+    Any,
     Callable,
     Dict,
     ParamSpec,
@@ -44,7 +45,7 @@ _SHORT.maxother = 80
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     /,
-    **types: Union[Type, Tuple[Type, ...]],
+    **types: Union[Type[Any], Tuple[Type[Any], ...]],
 ) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
     # pylint:disable=line-too-long
     """Decorator that enforces the types of function parameters.

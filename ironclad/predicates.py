@@ -174,7 +174,7 @@ def each(inner: Union[Predicate, Callable[[Any], bool]], /) -> Predicate:
 
     pred = _ensure_pred(inner)
 
-    def _check(it):
+    def _check(it: Iterable[Any]):
         if isinstance(it, (str, bytes, bytearray)):
             return False
         try:
