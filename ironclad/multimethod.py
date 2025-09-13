@@ -129,7 +129,7 @@ class Multimethod:
         return matches[0][1](*args, **kwargs)
 
     def _sig_str(self, sig: inspect.Signature, /) -> str:
-        parts = []
+        parts: List[str] = []
 
         for name, param in sig.parameters.items():
             annotation = (

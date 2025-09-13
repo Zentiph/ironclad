@@ -45,13 +45,13 @@ def _join_or(parts: Iterable[Any]) -> str:
 
 
 def _normalize_none(s: str) -> str:
-    # turn NoneType into None when something produces that label
+    # turn NoneType into None
     return "None" if s == "NoneType" else s
 
 
 def _flatten_union(union: Any) -> list[Any]:
     stack = [union]
-    out = []
+    out: List[Any] = []
 
     while stack:
         current = stack.pop()
