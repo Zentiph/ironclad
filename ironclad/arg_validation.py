@@ -16,15 +16,12 @@ from typing import (
     get_type_hints,
 )
 
-from .predicates import Predicate
+from .predicates import Predicate, as_predicate, matches_hint, spec_contains_int
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 from .util import (
-    as_predicate,
     fast_bind,
     make_plan,
-    matches_hint,
-    spec_contains_int,
     to_call_args,
 )
 

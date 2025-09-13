@@ -1,5 +1,5 @@
 """
-Some pre-made predicate functions for ease of use with enforce_values.
+Some pre-made predicate functions for ease of use.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
@@ -9,13 +9,15 @@ Some pre-made predicate functions for ease of use with enforce_values.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
-from .repr import type_repr
+from ..repr import type_repr
+from ..types import DEFAULT_ENFORCE_OPTIONS
+from .compile import matches_hint
+from .predicate import Predicate
 
 
 class _Comparable(Protocol):
@@ -28,87 +30,9 @@ class _Comparable(Protocol):
 _C = TypeVar("_C", bound=_Comparable)
 
 
-@dataclass(frozen=True)
-class Predicate:
-    """A predicate, containing a predicate function and a failure message.
-
-    Predicates can be modified/combined using
-    the logical operators 'and', 'or', and 'not'.
-    """
-
-    func: Callable[[Any], bool]
-    """A function that determines if a value is accepted by this predicate or not."""
-    msg: str = "predicate failed"
-    """A message representing this predicate."""
-
-    def __call__(self, x: Any) -> bool:
-        """Evaluate this predicate with a value.
-
-        Args:
-            x (Any): Value to pass to the predicate.
-
-        Returns:
-            bool: Whether the given value is accepted by this predicate.
-        """
-        return self.func(x)
-
-    def __and__(self, other: Any) -> Predicate:
-        """Combine this predicate with another, merging their conditions with an 'AND'.
-
-        Args:
-            other (Any): The other predicate.
-
-        Raises:
-            TypeError: If the other object is not a Predicate.
-
-        Returns:
-            Predicate: The combined predicate.
-        """
-        if not isinstance(other, Predicate):
-            raise TypeError(
-                "Cannot perform logical operations on 'Predicate' and "
-                f"'{type(other).__name__}'"
-            )
-
-        return Predicate(lambda x: self(x) and other(x), f"{self.msg} and {other.msg}")
-
-    def __or__(self, other: Any) -> Predicate:
-        """Combine this predicate with another, merging their conditions with an 'OR'.
-
-        Args:
-            other (Any): The other predicate.
-
-        Raises:
-            TypeError: If the other object is not a Predicate.
-
-        Returns:
-            Predicate: The combined predicate.
-        """
-        if not isinstance(other, Predicate):
-            raise TypeError(
-                "Cannot perform logical operations on 'Predicate' and "
-                f"'{type(other).__name__}'"
-            )
-
-        return Predicate(lambda x: self(x) or other(x), f"{self.msg} or {other.msg}")
-
-    def __invert__(self) -> Predicate:
-        """Invert this predicate.
-
-        Returns:
-            Predicate: The inverted predicate.
-        """
-        return Predicate(lambda x: not self(x), f"not ({self.msg})")
-
-
 def _ensure_pred(inner: Callable[[Any], bool] | Predicate | Any, /) -> Predicate:
     if isinstance(inner, Predicate):
         return inner
-
-    # TODO: change this to not need lazy import
-    # lazy import to prevent circular import
-    from .types import DEFAULT_ENFORCE_OPTIONS
-    from .util import matches_hint
 
     # prefer typing-aware matcher
     return Predicate(

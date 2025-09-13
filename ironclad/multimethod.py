@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+from .predicates import as_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
-from .util import as_predicate
 
 
 class InvalidOverloadError(TypeError):
@@ -129,7 +129,7 @@ class Multimethod:
         return matches[0][1](*args, **kwargs)
 
     def _sig_str(self, sig: inspect.Signature, /) -> str:
-        parts: List[str] = []
+        parts: list[str] = []
 
         for name, param in sig.parameters.items():
             annotation = (

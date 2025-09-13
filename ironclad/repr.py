@@ -51,7 +51,7 @@ def _normalize_none(s: str) -> str:
 
 def _flatten_union(union: Any) -> list[Any]:
     stack = [union]
-    out: List[Any] = []
+    out: list[Any] = []
 
     while stack:
         current = stack.pop()

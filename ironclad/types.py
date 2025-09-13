@@ -6,6 +6,8 @@ Types for ironclad.
 :license: MIT; see LICENSE.md for more details
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 

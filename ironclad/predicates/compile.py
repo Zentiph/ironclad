@@ -11,9 +11,9 @@ from functools import lru_cache
 from types import UnionType
 from typing import Annotated, Any, Literal, TypeVar, Union, get_args, get_origin
 
-from ..predicates import Predicate
 from ..repr import type_repr
 from ..types import EnforceOptions
+from .predicate import Predicate
 
 CACHE_SIZE = 2048
 
