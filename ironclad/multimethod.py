@@ -1,6 +1,5 @@
-"""multimethod.py
-
-File for the multimethod, an object that creates runtime overloads with type-hint matching.
+"""
+The Multimethod, an object that creates runtime overloads with type-hint matching.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
@@ -11,48 +10,46 @@ from __future__ import annotations
 
 import functools
 import inspect
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 from .util import as_predicate
 
 
-class multimethod:  # pylint:disable=invalid-name
+class InvalidOverloadError(TypeError):
+    """Raised when an invalid overload is called for a Multimethod."""
+
+
+class Multimethod:
     """Runtime overloads with type-hint matching."""
 
-    __slots__ = ("options", "_implementations", "__name__")
+    __slots__ = ("__name__", "_implementations", "options")
 
     def __init__(
         self,
-        func: Union[Callable, None] = None,
+        func: Callable[..., Any] | None = None,
         /,
         *,
         options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     ) -> None:
         """Runtime overloads with type-hint matching.
 
-        Arguments
-        ---------
-        func : Callable | None, optional
-            The function to overload, by default None
-        options : EnforceOptions, optional
-            Type enforcement options, by default DEFAULT_ENFORCE_OPTIONS
+        Args:
+            func (Callable[..., Any] | None, optional): The function to overload.
+                Defaults to None.
+            options (EnforceOptions, optional): Type enforcement options.
+                Defaults to DEFAULT_ENFORCE_OPTIONS.
         """
-
-        self._implementations: List[
-            Tuple[
+        self._implementations: list[
+            tuple[
                 inspect.Signature,
-                Dict[str, Callable[[Any], bool]],
-                Callable,
-                Dict[str, Any],
+                dict[str, Callable[[Any], bool]],
+                Callable[..., Any],
+                dict[str, Any],
             ]
         ] = []
         self.options = options
@@ -61,23 +58,18 @@ class multimethod:  # pylint:disable=invalid-name
             self.overload(func)
             functools.update_wrapper(self, func)
 
-    def overload(self, func: Callable, /) -> multimethod:
-        """Register a new function overload to this multimethod.
+    def overload(self, func: Callable[..., Any], /) -> Multimethod:
+        """Register a new function overload to this Multimethod.
 
-        Parameters
-        ----------
-        func : Callable
-            The function to register
+        Args:
+            func (Callable[..., Any]): The function to register.
 
-        Returns
-        -------
-        multimethod
-            The updated multimethod now including the given function
+        Returns:
+            Multimethod: The updated Multimethod now including the given function.
         """
-
         sig = inspect.signature(func)
-        validators: Dict[str, Callable[[Any], bool]] = {}
-        norm_annotation: Dict[str, Any] = {}
+        validators: dict[str, Callable[[Any], bool]] = {}
+        norm_annotation: dict[str, Any] = {}
 
         for name, param in sig.parameters.items():
             annotation = (
@@ -85,11 +77,6 @@ class multimethod:  # pylint:disable=invalid-name
                 if param.annotation is not inspect.Parameter.empty
                 else Any
             )
-            # Normalize varargs/kwargs to Tuple[...] and Mapping[str, ...]
-            # if param.kind is inspect.Parameter.VAR_POSITIONAL:
-            #     annotation = Tuple[annotation, ...]
-            # elif param.kind is inspect.Parameter.VAR_KEYWORD:
-            #     annotation = Mapping[str, annotation]
 
             norm_annotation[name] = annotation
             validators[name] = as_predicate(annotation, self.options)
@@ -97,8 +84,16 @@ class multimethod:  # pylint:disable=invalid-name
         self._implementations.append((sig, validators, func, norm_annotation))
         return self
 
-    def __call__(self, *args: Any, **kwargs: Any):
-        matches: List[Tuple[int, Callable]] = []
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Call this Multimethod with the given argument overload.
+
+        Raises:
+            InvalidOverloadError: If an overload that does not exist is called.
+
+        Returns:
+            Any: The return value matching the overload and arguments called.
+        """
+        matches: list[tuple[int, Callable[..., Any]]] = []
 
         for sig, validators, func, norm_annotation in self._implementations:
             try:
@@ -126,7 +121,7 @@ class multimethod:  # pylint:disable=invalid-name
             if kwargs:
                 got += (", " if got else "") + "**kwargs"
 
-            raise TypeError(
+            raise InvalidOverloadError(
                 f"No overload of {self.__name__}() matches ({got}). Candidates: {want}"
             )
 
@@ -148,38 +143,14 @@ class multimethod:  # pylint:disable=invalid-name
 
 
 def runtime_overload(
-    func: Callable, /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
-) -> multimethod:
-    # pylint:disable=line-too-long
-    """Turn a function into a multimethod, allowing for runtime overloads.
+    func: Callable[..., Any], /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
+) -> Multimethod:
+    """Turn a function into a Multimethod, allowing for runtime overloads.
 
-    Parameters
-    ----------
-    func : Callable
-        The function to turn into a multimethod
-    options : EnforceOptions, optional
-        Type enforcement options, by default DEFAULT_ENFORCE_OPTIONS
+    Args:
+        func (Callable[..., Any]): The function to turn into a Multimethod.
+        options (EnforceOptions, optional): Type enforcement options.
+            Defaults to DEFAULT_ENFORCE_OPTIONS.
 
-    Example
-    -------
-    >>> from ironclad import runtime_overload
-    >>>
-    >>> @runtime_overload
-    ... def func(s: str) -> bool:
-    ...     return True
-    ...
-    >>> @func.overload
-    ... def _(x: int, y: int) -> bool:
-    ...     return False
-    ...
-    >>> func("hi")
-    True
-    >>> func(1, 2)
-    False
-    >>> func(1, "hi")
-    Traceback (most recent call last):
-      ...
-    TypeError: No overload of func() matches (int, str). Candidates: func((s: str)) | func((x: int, y: int))
     """
-
-    return multimethod(func, options=options)
+    return Multimethod(func, options=options)

@@ -1,29 +1,30 @@
 """
-ironclad
---------
+ironclad is a lightweight toolkit for enforcing strict runtime contracts.
 
-A lightweight toolkit for enforcing strict runtime contracts
-—types, value sets, and predicates—without repetitive `if ... raise` boilerplate.
+ironclad enforces types, value sets, predicates, and more
+without repetitive `if ... raise` boilerplate.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
 :license: MIT; see LICENSE.md for more details.
 """
 
+from __future__ import annotations
+
 __all__ = [
-    "predicates",
+    "DEFAULT_ENFORCE_OPTIONS",
+    "EnforceOptions",
+    "Multimethod",
+    "as_predicate",
     "coerce_types",
     "enforce_annotations",
     "enforce_types",
     "enforce_values",
-    "multimethod",
+    "matches_hint",
+    "predicates",
     "runtime_overload",
     "type_repr",
-    "DEFAULT_ENFORCE_OPTIONS",
-    "EnforceOptions",
     "version_info",
-    "as_predicate",
-    "matches_hint",
 ]
 
 
@@ -35,6 +36,8 @@ __version__ = "0.1.0a"
 
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
+from typing import Literal, NamedTuple, TypeAlias
+
 from . import predicates
 from .arg_validation import (
     coerce_types,
@@ -42,17 +45,27 @@ from .arg_validation import (
     enforce_types,
     enforce_values,
 )
-from .multimethod import multimethod, runtime_overload
+from .multimethod import Multimethod, runtime_overload
 from .repr import type_repr
-from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions, _ReleaseLevel, _VersionInfo
+from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 from .util import as_predicate, matches_hint
+
+_ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
+
+
+class _VersionInfo(NamedTuple):
+    major: int
+    """The major version number."""
+    minor: int
+    """The minor version number."""
+    micro: int
+    """The micro version number."""
+    releaselevel: _ReleaseLevel
+    """The release level."""
 
 
 def _parse_version(v: str) -> _VersionInfo:
-    import re  # pylint:disable=import-outside-toplevel
-    from typing import Dict, Union  # pylint:disable=import-outside-toplevel
-
-    m = re.match(
+    m = __import__("re").match(
         r"^(?P<maj>\d+)\.(?P<min>\d+)\.(?P<micro>\d+)(?:(?P<pre>a|b|rc))?$",
         v,
     )
@@ -60,7 +73,7 @@ def _parse_version(v: str) -> _VersionInfo:
         # fallback if someone sets a non-PEP440 string
         return _VersionInfo(0, 0, 0, "alpha")
 
-    pre_map: Dict[Union[str, None], _ReleaseLevel] = {
+    pre_map: dict[str | None, _ReleaseLevel] = {
         None: "final",
         "a": "alpha",
         "b": "beta",
@@ -75,6 +88,6 @@ def _parse_version(v: str) -> _VersionInfo:
     )
 
 
-version_info: _VersionInfo = _parse_version(__version__)
+version_info = _parse_version(__version__)
 
-del _parse_version, _ReleaseLevel, _VersionInfo
+del _parse_version

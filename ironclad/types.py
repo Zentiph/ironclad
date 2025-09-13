@@ -1,5 +1,4 @@
-"""types.py
-
+"""
 Types for ironclad.
 
 :authors: Zentiph
@@ -8,12 +7,11 @@ Types for ironclad.
 """
 
 from dataclasses import dataclass
-from typing import Literal, NamedTuple, TypeAlias
 
 
 @dataclass(frozen=True)
 class EnforceOptions:
-    """A configuration of options for the enforce_types decorator."""
+    """A configuration of type enforcement options."""
 
     allow_subclasses: bool = True
     """Whether to allow subclasses to count as a valid type for a parameter."""
@@ -24,13 +22,7 @@ class EnforceOptions:
 
 
 DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
+"""Default type enforcement options.
 
-
-_ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
-
-
-class _VersionInfo(NamedTuple):
-    major: int
-    minor: int
-    micro: int
-    releaselevel: _ReleaseLevel
+(allow_subclasses=True, check_defaults=True, strict_bools=True)
+"""
