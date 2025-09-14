@@ -25,6 +25,6 @@ pip install ironclad
 ```
 
 ## Contributions
-Contributions are welcome, but as this is a small project, so they may take a while to be processed. Please include tests with your contributions (if needed).
+Contributions are welcome, but as this is a small project, they may take a while to be processed.
 
-Create an issue/pull request.
+To contribute, create an issue/pull request, and please include tests with your contributions if needed.
