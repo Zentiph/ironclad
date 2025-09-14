@@ -20,7 +20,7 @@ class Predicate:
     """A predicate, containing a predicate function and a failure message.
 
     Predicates can be modified/combined using
-    the logical operators 'and', 'or', and 'not'.
+    the logical operators and ('&'), or ('|'), and not ('~').
     """
 
     func: Callable[[Any], bool]
