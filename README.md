@@ -1,6 +1,9 @@
 # ironclad
 **ironclad** helps developers write defensive, self-documenting Python code.
 
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/zentiph/ironclad)
+![GitHub last commit](https://img.shields.io/github/last-commit/zentiph/ironclad)
+
 It enforces parameter types, constrains values with predicates or enums,
 and raises precise errors on violation—keeping interfaces explicit and code clean.
 Simple, composable guards harden functions and classes with correctness and security,
