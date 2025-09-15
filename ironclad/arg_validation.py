@@ -86,7 +86,8 @@ def enforce_types(
                     conditions += ")"
 
                     raise TypeError(
-                        f"{func.__qualname__}(): '{name}' expected {pred.msg} "
+                        f"{func.__qualname__}(): '{name}' expected "
+                        f"{pred.render_msg(val)} "
                         f"{conditions if conditions != '()' else ''}, "
                         f"got '{type_repr(type(val))}' with value {_SHORT.repr(val)}"
                     )
@@ -194,7 +195,7 @@ def enforce_values(
                 if not pred(val):
                     raise ValueError(
                         f"{func.__qualname__}(): '{name}' failed constraint: "
-                        f"{pred.msg}; got {_SHORT.repr(val)}"
+                        f"{pred.render_msg(val)}; got {_SHORT.repr(val)}"
                     )
 
             call_args, call_kwargs = to_call_args(bound, plan)

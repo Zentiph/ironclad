@@ -41,7 +41,23 @@ def _ensure_pred(inner: Callable[[Any], bool] | Predicate | Any, /) -> Predicate
     )
 
 
-def one_of(
+ALWAYS = Predicate(lambda x: True, "always true")
+NEVER = Predicate(lambda x: False, "always false")
+
+
+def equals(value: Any) -> Predicate:
+    """A predicate that checks if a value is equal to another.
+
+    Args:
+        value (Any): The value to store and use to check against.
+
+    Returns:
+        Predicate: A predicate that checks if a value is equal to another.
+    """
+    return Predicate(lambda x: x == value, lambda x: f"expected == {value!r}")
+
+
+def is_in(
     values: Iterable[Any],  # pylint:disable=redefined-outer-name
     /,
 ) -> Predicate:
@@ -55,7 +71,9 @@ def one_of(
             is in the iterable of valid values.
     """
     s = set(values)
-    return Predicate(lambda x: x in s, f"one of {sorted(s)}")
+    return Predicate(
+        lambda x: x in s, lambda x: f"expected one of {tuple(sorted(s))!r}"
+    )
 
 
 def between(low: _C, high: _C, /, *, inclusive: bool = True) -> Predicate:
@@ -73,9 +91,25 @@ def between(low: _C, high: _C, /, *, inclusive: bool = True) -> Predicate:
     """
     if inclusive:
         return Predicate(
-            lambda x: low <= x <= high, f"between {low} and {high}, inclusive"
+            lambda x: low <= x <= high, lambda x: f"expected {low!r} <= x <= {high!r}"
         )
-    return Predicate(lambda x: low < x < high, f"between {low} and {high}, exclusive")
+    return Predicate(
+        lambda x: low < x < high, lambda x: f"expected {low!r} < x < {high!r}"
+    )
+
+
+def is_instance(t: type | tuple[type, ...]) -> Predicate:
+    """A predicate that checks if a value is an instance of a type/types.
+
+    Args:
+        t (type | tuple[type, ...]): The type/types to check.
+
+    Returns:
+        Predicate: A predicate that checks if a value is an instance of a type/types.
+    """
+    return Predicate(
+        lambda x: isinstance(x, t), lambda x: f"expected instance of {t!r}"
+    )
 
 
 def non_empty() -> Predicate:
@@ -84,7 +118,10 @@ def non_empty() -> Predicate:
     Returns:
         Predicate: A predicate that checks if the given value is sized and not empty.
     """
-    return Predicate(lambda x: hasattr(x, "__len__") and len(x) > 0, "non empty")
+    return Predicate(
+        lambda x: hasattr(x, "__len__") and len(x) > 0,
+        lambda x: "expected non empty sized object",
+    )
 
 
 def regex(pattern: str, flags: int = 0) -> Predicate:
@@ -100,35 +137,8 @@ def regex(pattern: str, flags: int = 0) -> Predicate:
     rx = re.compile(pattern, flags)
     return Predicate(
         lambda x: isinstance(x, str) and rx.fullmatch(x) is not None,
-        f"matches regex/{pattern}/",
+        lambda x: f"expected value to match regex/{pattern}/",
     )
-
-
-def each(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
-    """A predicate that checks if every item in an iterable is accepted by a predicate.
-
-    This predicate does not treat strings, bytes, or bytearrays as iterables;
-    they should instead be converted to another iterable type.
-
-    Args:
-        inner (Callable[[Any], bool] | Predicate): The inner predicate.
-
-    Returns:
-        Predicate: A predicate that checks if all the elements
-            in an iterable are accepted by the predicate.
-    """
-    pred = _ensure_pred(inner)
-
-    def _check(it: Iterable[Any]) -> bool:
-        if isinstance(it, (str, bytes, bytearray)):
-            return False
-        try:
-            iterator = iter(it)
-        except TypeError:
-            return False
-        return all(pred(ele) for ele in iterator)
-
-    return Predicate(_check, f"all elements are {pred.msg}")
 
 
 def keys(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
@@ -144,7 +154,7 @@ def keys(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
     pred = _ensure_pred(inner)
     return Predicate(
         lambda d: all(pred(key) for key in getattr(d, "keys", list)()),
-        f"for each key: {pred.msg}",
+        lambda x: f"{pred.render_msg(x)} for each key",
     )
 
 
@@ -161,7 +171,7 @@ def values(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
     pred = _ensure_pred(inner)
     return Predicate(
         lambda d: all(pred(val) for val in getattr(d, "values", list)()),
-        f"for each value: {pred.msg}",
+        lambda x: f"{pred.render_msg(x)} for each value",
     )
 
 
@@ -195,5 +205,6 @@ def items(
     return Predicate(
         lambda d: hasattr(d, "items")
         and all(key_validator(k) and val_validator(v) for k, v in d.items()),
-        f"for each key: {key_validator.msg} and for each value: {val_validator.msg}",
+        lambda kv: f"{key_validator.render_msg(kv[0])}for each key "
+        f"and {val_validator.render_msg(kv[1])} for each value",
     )

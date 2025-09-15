@@ -11,19 +11,6 @@ def _is_pos(x: int) -> bool:
     return x > 0
 
 
-def test_accessors() -> None:
-    """Test the accessors of the predicate."""
-    pred = Predicate(_is_pos, "is positive")
-
-    assert pred.func(1) is True, "Predicate function did not return the expected value."
-    assert pred.func(-1) is False, (
-        "Predicate function did not return the expected value."
-    )
-    assert pred.msg == "is positive", (
-        "Predicate message did not equal the expected value."
-    )
-
-
 def test_call() -> None:
     """Test the call method of the predicate."""
     pred = Predicate(_is_pos, "is positive")
@@ -40,7 +27,7 @@ def test_and() -> None:
 
     assert combined(1) is False, "ANDed predicate did not return the expected value."
     assert combined(-1) is False, "ANDed predicate did not return the expected value."
-    assert combined.msg == "is positive and is not positive"
+    assert combined.render_msg() == "(is positive) and (is not positive)"
 
     with pytest.raises(TypeError):
         _invalid = pred1 & 10
@@ -55,7 +42,7 @@ def test_or() -> None:
     assert combined(1) is True, "ORed predicate did not return the expected value."
     assert combined(-1) is True, "ORed predicate did not return the expected value."
     assert combined(0) is False, "ORed predicate did not return the expected value."
-    assert combined.msg == "is positive or is negative"
+    assert combined.render_msg() == "(is positive) or (is negative)"
 
     with pytest.raises(TypeError):
         _invalid = pred1 | 10
@@ -68,7 +55,7 @@ def test_invert() -> None:
 
     assert inverted(1) is False, "Inverted predicate did not return the expected value."
     assert inverted(-1) is True, "Inverted predicate did not return the expected value."
-    assert inverted.msg == "not (is positive)"
+    assert inverted.render_msg() == "not (is positive)"
 
 
 if __name__ == "__main__":

@@ -7,15 +7,18 @@ Tools for creating predicates for logic or validation.
 """
 
 __all__ = [
+    "ALWAYS",
+    "NEVER",
     "Predicate",
     "as_predicate",
     "between",
-    "each",
+    "equals",
+    "is_in",
+    "is_instance",
     "items",
     "keys",
     "matches_hint",
     "non_empty",
-    "one_of",
     "regex",
     "spec_contains_int",
     "values",
@@ -23,4 +26,16 @@ __all__ = [
 
 from .compile import as_predicate, matches_hint, spec_contains_int
 from .predicate import Predicate
-from .predicates import between, each, items, keys, non_empty, one_of, regex, values
+from .predicates import (
+    ALWAYS,
+    NEVER,
+    between,
+    equals,
+    is_in,
+    is_instance,
+    items,
+    keys,
+    non_empty,
+    regex,
+    values,
+)
