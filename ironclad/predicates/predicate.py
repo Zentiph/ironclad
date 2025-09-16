@@ -6,8 +6,6 @@ The predicate class.
 :license: MIT; see LICENSE.md for more details
 """
 
-# TODO ORGANIZE THIS FILE
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar
@@ -50,7 +48,7 @@ class Predicate(Generic[T]):
         #      the context of pred3 is [pred1, pred2]
         self.__context: tuple[Predicate[Any], ...] = ()
 
-    # --- core ---
+    # --- core --- #
     def __call__(self, x: T) -> bool:
         """Evaluate this predicate with a value.
 
@@ -62,6 +60,7 @@ class Predicate(Generic[T]):
         """
         return bool(self.__func(x))
 
+    # --- props --- #
     @property
     def name(self) -> str:
         """Get the name of this predicate.
@@ -128,7 +127,10 @@ class Predicate(Generic[T]):
         )
         return f"{msg} [via {chain}]"
 
-    # --- diagnostics / ergonomics ---
+    def __set_context(self, context: tuple[Predicate[T], ...]) -> None:
+        self.__context = context
+
+    # --- diagnostics --- #
     def explain(self, x: T) -> str | None:
         """Explain this predicate's output for x.
 
@@ -159,6 +161,7 @@ class Predicate(Generic[T]):
             raise exc(f"{label}: {self.render_msg(x)} (got {x!r})")
         return x
 
+    # --- ergonomics --- #
     def with_name(self, name: str) -> Predicate[T]:
         """Clone this predicate and give it a new name.
 
@@ -325,6 +328,3 @@ class Predicate(Generic[T]):
         fn = getattr(self.__func, "__name__", repr(self.__func))
         m = self.__msg.__qualname__ if callable(self.__msg) else self.__msg
         return f"Predicate(func={fn}, msg={m!r})"
-
-    def __set_context(self, context: tuple[Predicate[T], ...]) -> None:
-        self.__context = context
