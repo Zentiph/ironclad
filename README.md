@@ -6,6 +6,9 @@ and raises precise errors on violation—keeping interfaces explicit and code cl
 Simple, composable guards harden functions and classes with correctness and security,
 with minimal overhead and maximum readability.
 
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/zentiph/ironclad)
+![GitHub last commit](https://img.shields.io/github/last-commit/zentiph/ironclad)
+
 ## Features
 * **Strict type checks:** Fail fast on mismatches with clear `TypeError`s.
 * **Value constraints:** Allowlists, enums, ranges, and custom predicates.
