@@ -1,0 +1,3 @@
+* add not_none() predicate
+* rename perf.py to plan.py
+* see if "this is silly" can be simplified
