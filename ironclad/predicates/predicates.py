@@ -9,10 +9,10 @@ Some pre-made predicate functions for ease of use.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Hashable, Iterable, Sized
 
 from ..repr import type_repr
 from ..types import DEFAULT_ENFORCE_OPTIONS
@@ -21,98 +21,110 @@ from .predicate import Predicate
 
 
 class _Comparable(Protocol):
-    def __lt__(self, other: _Comparable) -> bool: ...
-    def __le__(self, other: _Comparable) -> bool: ...
-    def __gt__(self, other: _Comparable) -> bool: ...
-    def __ge__(self, other: _Comparable) -> bool: ...
+    def __lt__(self, other: Self, /) -> bool: ...
+    def __le__(self, other: Self, /) -> bool: ...
+    def __gt__(self, other: Self, /) -> bool: ...
+    def __ge__(self, other: Self, /) -> bool: ...
 
 
-_C = TypeVar("_C", bound=_Comparable)
+C = TypeVar("C", bound=_Comparable)
+T = TypeVar("T")
 
 
-def _ensure_pred(inner: Callable[[Any], bool] | Predicate | Any, /) -> Predicate:
+def _ensure_pred(inner: Callable[[T], bool] | Predicate[T] | Any, /) -> Predicate[T]:
     if isinstance(inner, Predicate):
         return inner
 
     # prefer typing-aware matcher
-    return Predicate(
+    return Predicate[T](
         lambda x: matches_hint(x, inner, DEFAULT_ENFORCE_OPTIONS),
+        "predicate",
         f"'{type_repr(inner)}'",
     )
 
 
-ALWAYS = Predicate(lambda x: True, "always true")
-NEVER = Predicate(lambda x: False, "always false")
+ALWAYS: Predicate[Any] = Predicate(lambda x: True, "always", "always true")
+NEVER: Predicate[Any] = Predicate(lambda x: False, "never", "always false")
 
 
-def equals(value: Any) -> Predicate:
+def equals(value: T) -> Predicate[T]:
     """A predicate that checks if a value is equal to another.
 
     Args:
-        value (Any): The value to store and use to check against.
+        value (T): The value to store and use to check against.
 
     Returns:
-        Predicate: A predicate that checks if a value is equal to another.
+        Predicate[T]: A predicate that checks if a value is equal to another.
     """
-    return Predicate(lambda x: x == value, lambda x: f"expected == {value!r}")
+    return Predicate(lambda x: x == value, "equals", lambda x: f"expected == {value!r}")
 
 
 def is_in(
-    values: Iterable[Any],  # pylint:disable=redefined-outer-name
+    values: Iterable[T],  # pylint:disable=redefined-outer-name
     /,
-) -> Predicate:
+) -> Predicate[T]:
     """A predicate that checks if a value is in an iterable.
 
     Args:
-    values (Iterable[Any]): The iterable of valid values.
+    values (Iterable[T]): The iterable of valid values.
 
     Returns:
-        Predicate: A predicate that checks if the given value
+        Predicate[T]: A predicate that checks if the given value
             is in the iterable of valid values.
     """
-    s = set(values)
     return Predicate(
-        lambda x: x in s, lambda x: f"expected one of {tuple(sorted(s))!r}"
+        lambda x: x in values,
+        "is in",
+        lambda x: f"expected one of {tuple(values)!r}",
     )
 
 
-def between(low: _C, high: _C, /, *, inclusive: bool = True) -> Predicate:
+def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
     """A predicate that checks if a value is within a range of values.
 
     Args:
-        low (_C): The lower bound (must be comparable).
-        high (_C): The upper bound (must be comparable).
+        low (C): The lower bound (must be comparable).
+        high (C): The upper bound (must be comparable).
         inclusive (bool, optional): Whether the endpoints are inclusive.
             Defaults to True.
 
     Returns:
-        Predicate: A predicate that checks if the given value
+        Predicate[C]: A predicate that checks if the given value
             is in the valid range.
     """
     if inclusive:
         return Predicate(
-            lambda x: low <= x <= high, lambda x: f"expected {low!r} <= x <= {high!r}"
+            lambda x: low <= x <= high,
+            "between",
+            lambda x: f"expected {low!r} <= x <= {high!r}",
         )
     return Predicate(
-        lambda x: low < x < high, lambda x: f"expected {low!r} < x < {high!r}"
+        lambda x: low < x < high,
+        "between",
+        lambda x: f"expected {low!r} < x < {high!r}",
     )
 
 
-def is_instance(t: type | tuple[type, ...]) -> Predicate:
+def is_instance(t: type | tuple[type, ...]) -> Predicate[object]:
     """A predicate that checks if a value is an instance of a type/types.
 
     Args:
         t (type | tuple[type, ...]): The type/types to check.
 
     Returns:
-        Predicate: A predicate that checks if a value is an instance of a type/types.
+        Predicate[object]: A predicate that checks if a value is an instance of a type.
     """
+    type_name = (
+        " | ".join(tn.__name__ for tn in t) if isinstance(t, tuple) else t.__name__
+    )
     return Predicate(
-        lambda x: isinstance(x, t), lambda x: f"expected instance of {t!r}"
+        lambda x: isinstance(x, t),
+        "is instance",
+        lambda x: f"expected instance of {type_name}",
     )
 
 
-def non_empty() -> Predicate:
+def non_empty() -> Predicate[Sized]:
     """A predicate that checks if the given value is sized and is not empty.
 
     Returns:
@@ -120,11 +132,12 @@ def non_empty() -> Predicate:
     """
     return Predicate(
         lambda x: hasattr(x, "__len__") and len(x) > 0,
+        "non empty",
         lambda x: "expected non empty sized object",
     )
 
 
-def regex(pattern: str, flags: int = 0) -> Predicate:
+def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     """A predicate that checks if a string matches the given regex.
 
     Args:
@@ -132,79 +145,83 @@ def regex(pattern: str, flags: int = 0) -> Predicate:
         flags (int, optional): The number of flags, by default 0.
 
     Returns:
-        Predicate: A predicate that checks if a string matches the given regex.
+        Predicate[str]: A predicate that checks if a string matches the given regex.
     """
     rx = re.compile(pattern, flags)
     return Predicate(
-        lambda x: isinstance(x, str) and rx.fullmatch(x) is not None,
+        lambda x: rx.fullmatch(x) is not None,
+        "regex",
         lambda x: f"expected value to match regex/{pattern}/",
     )
 
 
-def keys(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
+def keys(
+    inner: Callable[[Hashable], bool] | Predicate[Hashable], /
+) -> Predicate[Iterable[Hashable]]:
     """A predicate that checks if every key in a dictionary is accepted by a predicate.
 
     Args:
-        inner (Callable[[Any], bool] | Predicate): The inner predicate.
+        inner (Callable[[Hashable], bool] | Predicate[Hashable]): The inner predicate.
 
     Returns:
-        Predicate: A predicate that checks if every key
+        Predicate[Iterable[Hashable]]: A predicate that checks if every key
             in a dictionary is accepted by a predicate.
     """
-    pred = _ensure_pred(inner)
-    return Predicate(
+    pred: Predicate[Hashable] = _ensure_pred(inner)
+    return Predicate.lift_from(
+        pred,
         lambda d: all(pred(key) for key in getattr(d, "keys", list)()),
-        lambda x: f"{pred.render_msg(x)} for each key",
+        "keys",
+        lambda x: f"every key: ({pred.render_msg()})",
     )
 
 
-def values(inner: Callable[[Any], bool] | Predicate, /) -> Predicate:
+def values(inner: Callable[[T], bool] | Predicate[T], /) -> Predicate[Iterable[T]]:
     """A predicate that checks if every value in a dict is accepted by a predicate.
 
     Args:
-        inner (Callable[[Any], bool] | Predicate): The inner predicate.
+        inner (Callable[[T], bool] | Predicate[T]): The inner predicate.
 
     Returns:
-        Predicate: A predicate that checks if every value
+        Predicate[T]: A predicate that checks if every value
             in a dict is accepted by a predicate.
     """
-    pred = _ensure_pred(inner)
-    return Predicate(
+    pred: Predicate[T] = _ensure_pred(inner)
+    return Predicate.lift_from(
+        pred,
         lambda d: all(pred(val) for val in getattr(d, "values", list)()),
-        lambda x: f"{pred.render_msg(x)} for each value",
+        "values",
+        lambda x: f"every value: ({pred.render_msg()})",
     )
 
 
 def items(
-    key_predicate: Callable[[Any], bool] | Predicate,
-    value_predicate: Callable[[Any], bool] | Predicate,
+    key_predicate: Callable[[Hashable], bool] | Predicate[Hashable],
+    value_predicate: Callable[[T], bool] | Predicate[T],
     /,
-) -> Predicate:
+) -> Predicate[dict[Hashable, T]]:
     """A predicate that checks if every item in a dict is accepted by the predicates.
 
     Args:
-        key_predicate (Callable[[Any], bool] | Predicate):
+        key_predicate (Callable[[Hashable], bool] | Predicate[Hashable]):
             The predicate for the keys.
-        value_predicate (Callable[[Any], bool] | Predicate):
+        value_predicate (Callable[[T], bool] | Predicate[T]):
             The predicate for the values.
 
     Returns:
-        Predicate: A predicate that checks if every item
+        Predicate[tuple[Hashable, T]]: A predicate that checks if every item
             in a dict is accepted by the predicates.
     """
-    key_validator = (
-        key_predicate
-        if isinstance(key_predicate, Predicate)
-        else Predicate(key_predicate, "predicate")
-    )
-    val_validator = (
-        value_predicate
-        if isinstance(value_predicate, Predicate)
-        else Predicate(value_predicate, "predicate")
-    )
+    key_validator = keys(key_predicate)
+    val_validator = values(value_predicate)
+
     return Predicate(
-        lambda d: hasattr(d, "items")
-        and all(key_validator(k) and val_validator(v) for k, v in d.items()),
-        lambda kv: f"{key_validator.render_msg(kv[0])}for each key "
-        f"and {val_validator.render_msg(kv[1])} for each value",
+        lambda d: hasattr(d, "keys")
+        and hasattr(d, "values")
+        and key_validator(d.keys())
+        and val_validator(d.values()),
+        "items",
+        lambda kv: f"every item: ({key_validator.render_msg()}, "
+        + val_validator.render_msg()
+        + ")",
     )
