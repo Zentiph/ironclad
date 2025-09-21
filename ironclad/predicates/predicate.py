@@ -127,7 +127,7 @@ class Predicate(Generic[T]):
         )
         return f"{msg} [via {chain}]"
 
-    def __set_context(self, context: tuple[Predicate[T], ...]) -> None:
+    def _set_context(self, context: tuple[Predicate[T], ...]) -> None:
         self.__context = context
 
     # --- diagnostics --- #
@@ -172,7 +172,7 @@ class Predicate(Generic[T]):
             Predicate[T]: The cloned predicate with the new name.
         """
         pred = Predicate(self.__func, name, self.__msg)
-        pred.__set_context(self.__context)
+        pred._set_context(self.__context)
         return pred
 
     def with_msg(self, msg: str | Callable[[T | None], str]) -> Predicate[T]:
@@ -185,7 +185,7 @@ class Predicate(Generic[T]):
             Predicate[T]: The cloned predicate with the new message.
         """
         pred = Predicate(self.__func, self.__name, msg)
-        pred.__set_context(self.__context)
+        pred._set_context(self.__context)
         return pred
 
     # --- combinators ---
@@ -258,7 +258,7 @@ class Predicate(Generic[T]):
         msg: str | Callable[[Any], str] | None = None,
     ) -> Predicate[Any]:
         pred = Predicate(func, name, msg)
-        pred.__set_context((*self.__context, self))
+        pred._set_context((*self.__context, self))
         return pred
 
     @classmethod
@@ -285,7 +285,7 @@ class Predicate(Generic[T]):
         return pred.__lift(func, name, msg)
 
     def all(self) -> Predicate[Iterable[T]]:
-        """Lift this predicate to check if every element in an iterable is accepted.
+        """Modify this predicate to check if every element in an iterable is accepted.
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
@@ -297,7 +297,7 @@ class Predicate(Generic[T]):
         )
 
     def any(self) -> Predicate[Iterable[T]]:
-        """Lift this predicate to check if any element in an iterable is accepted.
+        """Modify this predicate to check if any element in an iterable is accepted.
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
@@ -306,6 +306,22 @@ class Predicate(Generic[T]):
             lambda i: any(self(e) for e in i),
             "any(" + self.__name + ")",
             lambda i: f"at least one element: ({self.__render_msg_no_context(i)})",
+        )
+
+    def on_attr(self, getter: Callable[[object], Any]) -> Predicate[T]:
+        """Modify this predicate to apply its condition to a property of object.
+
+        Args:
+            getter (Callable[[object], Any]): A getter function for the object's attribute.
+
+        Returns:
+            Predicate[T]: The new predicate.
+        """
+        return self.__lift(
+            lambda o: self.__func(getter(o)),
+            # TODO: improve these messages if possible
+            self.__name + " on attr",
+            lambda o: f"on attribute: ({self.__render_msg_no_context(o)})",
         )
 
     # --- safety / debugging ---
@@ -327,4 +343,4 @@ class Predicate(Generic[T]):
         """
         fn = getattr(self.__func, "__name__", repr(self.__func))
         m = self.__msg.__qualname__ if callable(self.__msg) else self.__msg
-        return f"Predicate(func={fn}, msg={m!r})"
+        return f"Predicate(func={fn}, name={self.__name} msg={m!r})"
