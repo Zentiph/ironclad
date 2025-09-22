@@ -312,7 +312,7 @@ class Predicate(Generic[T]):
         """Modify this predicate to apply its condition to a property of object.
 
         Args:
-            getter (Callable[[object], Any]): A getter function for the object's attribute.
+            getter (Callable[[object], Any]): A getter for the object's attribute.
 
         Returns:
             Predicate[T]: The new predicate.

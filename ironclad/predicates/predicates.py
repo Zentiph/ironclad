@@ -9,7 +9,7 @@ Some pre-made predicate functions for ease of use.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Sized
@@ -30,6 +30,8 @@ class _Comparable(Protocol):
 C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
 
+AnyRealNumber: TypeAlias = int | float
+
 
 def _ensure_pred(inner: Callable[[T], bool] | Predicate[T] | Any, /) -> Predicate[T]:
     if isinstance(inner, Predicate):
@@ -47,6 +49,7 @@ ALWAYS: Predicate[Any] = Predicate(lambda x: True, "always", "always true")
 NEVER: Predicate[Any] = Predicate(lambda x: False, "never", "always false")
 
 
+# --- simple predicates ---
 def equals(value: T) -> Predicate[T]:
     """A predicate that checks if a value is equal to another.
 
@@ -59,33 +62,13 @@ def equals(value: T) -> Predicate[T]:
     return Predicate(lambda x: x == value, "equals", lambda x: f"expected == {value!r}")
 
 
-def is_in(
-    values: Iterable[T],  # pylint:disable=redefined-outer-name
-    /,
-) -> Predicate[T]:
-    """A predicate that checks if a value is in an iterable.
-
-    Args:
-    values (Iterable[T]): The iterable of valid values.
-
-    Returns:
-        Predicate[T]: A predicate that checks if the given value
-            is in the iterable of valid values.
-    """
-    return Predicate(
-        lambda x: x in values,
-        "is in",
-        lambda x: f"expected one of {tuple(values)!r}",
-    )
-
-
 def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
     """A predicate that checks if a value is within a range of values.
 
     Args:
         low (C): The lower bound (must be comparable).
         high (C): The upper bound (must be comparable).
-        inclusive (bool, optional): Whether the endpoints are inclusive.
+        inclusive (bool, optional): Whether the bounds are inclusive.
             Defaults to True.
 
     Returns:
@@ -124,19 +107,52 @@ def is_instance(t: type | tuple[type, ...]) -> Predicate[object]:
     )
 
 
-def non_empty() -> Predicate[Sized]:
-    """A predicate that checks if the given value is sized and is not empty.
+# --- sequence predicates ---
+def is_in(
+    values: Iterable[T],  # pylint:disable=redefined-outer-name
+    /,
+) -> Predicate[T]:
+    """A predicate that checks if a value is in an iterable.
+
+    Args:
+    values (Iterable[T]): The iterable of valid values.
 
     Returns:
-        Predicate: A predicate that checks if the given value is sized and not empty.
+        Predicate[T]: A predicate that checks if the given value
+            is in the iterable of valid values.
     """
     return Predicate(
-        lambda x: hasattr(x, "__len__") and len(x) > 0,
-        "non empty",
-        lambda x: "expected non empty sized object",
+        lambda x: x in values,
+        "is in",
+        lambda x: f"expected one of {tuple(values)!r}",
     )
 
 
+def has_length(length: int) -> Predicate[Sized]:
+    """A predicate that checks if the given value has a size matching the given length.
+
+    Args:
+        length (int): The approved length of the sized object.
+
+    Returns:
+        Predicate[Sized]: A predicate that checks
+            if the object's size matches the length.
+    """
+    return Predicate(
+        lambda s: hasattr(s, "__len__") and len(s) == length,
+        "has length",
+        lambda s: "expected sized object with length " + str(length),
+    )
+
+
+non_empty = ~has_length(0).with_name("non empty").with_msg(
+    lambda s: "expected non empty sized object"
+)
+"""A predicate that checks if the given value is sized and non empty.
+"""
+
+
+# --- string predicates ---
 def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     """A predicate that checks if a string matches the given regex.
 
@@ -149,10 +165,13 @@ def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     """
     rx = re.compile(pattern, flags)
     return Predicate(
-        lambda x: rx.fullmatch(x) is not None,
+        lambda s: rx.fullmatch(s) is not None,
         "regex",
-        lambda x: f"expected value to match regex/{pattern}/",
+        lambda s: f"expected value to match regex/{pattern}/",
     )
+
+
+# --- map predicates ---
 
 
 def keys(
@@ -170,9 +189,9 @@ def keys(
     pred: Predicate[Hashable] = _ensure_pred(inner)
     return Predicate.lift_from(
         pred,
-        lambda d: all(pred(key) for key in getattr(d, "keys", list)()),
+        lambda d: all(pred(key) for key in d),
         "keys",
-        lambda x: f"every key: ({pred.render_msg()})",
+        lambda d: f"every key: ({pred.render_msg()})",
     )
 
 
@@ -189,9 +208,9 @@ def values(inner: Callable[[T], bool] | Predicate[T], /) -> Predicate[Iterable[T
     pred: Predicate[T] = _ensure_pred(inner)
     return Predicate.lift_from(
         pred,
-        lambda d: all(pred(val) for val in getattr(d, "values", list)()),
+        lambda d: all(pred(val) for val in d.values()),
         "values",
-        lambda x: f"every value: ({pred.render_msg()})",
+        lambda d: f"every value: ({pred.render_msg()})",
     )
 
 
@@ -221,7 +240,7 @@ def items(
         and key_validator(d.keys())
         and val_validator(d.values()),
         "items",
-        lambda kv: f"every item: ({key_validator.render_msg()}, "
+        lambda d: f"every item: ({key_validator.render_msg()}, "
         + val_validator.render_msg()
         + ")",
     )
