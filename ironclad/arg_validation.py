@@ -19,7 +19,7 @@ from typing import (
 
 from .predicates import Predicate, as_predicate, matches_hint, spec_contains_int
 from .repr import type_repr
-from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
+from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 from .util import (
     fast_bind,
     make_plan,
@@ -39,7 +39,7 @@ _SHORT.maxother = 80
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     /,
-    **types: type | tuple[type, ...],
+    **types: ClassInfo,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that enforces the types of function parameters.
 
@@ -48,7 +48,7 @@ def enforce_types(
     Args:
         options (EnforceOptions, optional): Type enforcement options.
             Defaults to DEFAULT_ENFORCE_OPTIONS.
-        types (Type | Tuple[Type, ...]): A mapping of argument names to expected types.
+        types (ClassInfo): A mapping of argument names to expected types.
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:

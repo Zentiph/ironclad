@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Sized
 
 from ..repr import type_repr
-from ..types import DEFAULT_ENFORCE_OPTIONS
+from ..types import DEFAULT_ENFORCE_OPTIONS, ClassInfo
 from .compile import matches_hint
 from .predicate import Predicate
 
@@ -55,9 +55,6 @@ class _Comparable(Protocol):
     def __ge__(self, other: Self, /) -> bool: ...
 
 
-# to match python's _ClassInfo type for isinstance()
-_ClassInfo: TypeAlias = type | UnionType | tuple["_ClassInfo", ...]
-
 C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
 
@@ -76,7 +73,7 @@ def _ensure_pred(inner: Callable[[T], bool] | Predicate[T] | Any, /) -> Predicat
     )
 
 
-def _flatten_type(t: _ClassInfo) -> list[type]:
+def _flatten_type(t: ClassInfo) -> list[type]:
     stack = [t]
     types: list[type] = []
 
@@ -103,7 +100,7 @@ def _flatten_type(t: _ClassInfo) -> list[type]:
 
 
 # TODO: think about moving this to repr.py
-def _class_info_to_str(t: _ClassInfo, /) -> str:
+def _class_info_to_str(t: ClassInfo, /) -> str:
     if isinstance(t, type):
         return t.__name__
     return " | ".join(tp.__name__ for tp in _flatten_type(t))
@@ -152,11 +149,11 @@ def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
     )
 
 
-def instance_of(t: _ClassInfo) -> Predicate[object]:
+def instance_of(t: ClassInfo) -> Predicate[object]:
     """A predicate that checks if a value is an instance of a type/types.
 
     Args:
-        t (_ClassInfo): The type/types to check.
+        t (ClassInfo): The type/types to check.
 
     Returns:
         Predicate[object]: A predicate that checks if a value is an instance of a type.
