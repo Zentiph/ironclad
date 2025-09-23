@@ -6,7 +6,8 @@ Compiled predicates for value/type checks.
 :license: MIT; see LICENSE.md for more details
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Set as AbcSet
 from functools import lru_cache
 from types import UnionType
 from typing import Annotated, Any, Literal, TypeVar, Union, get_args, get_origin
@@ -72,19 +73,9 @@ def _matches_collection_hint(
             )
         )
 
-    if origin in (list, set, frozenset, Sequence):
+    if origin in (list, set, frozenset, Sequence, AbcSet, MutableSequence):
         elem = (get_args(hint) or (Any,))[0]
-        pytype = (  # this is silly
-            list
-            if origin is list
-            else set
-            if origin is set
-            else frozenset
-            if origin is frozenset
-            else Sequence
-        )
-
-        return isinstance(x, pytype) and all(matches_hint(e, elem, opts) for e in x)
+        return isinstance(x, origin) and all(matches_hint(e, elem, opts) for e in x)
 
     if origin in (dict, Mapping):
         if not isinstance(x, Mapping):
