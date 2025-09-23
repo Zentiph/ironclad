@@ -21,8 +21,11 @@ from .predicate import Predicate
 
 __all__ = [
     "ALWAYS",
+    "NEGATIVE",
     "NEVER",
     "NON_EMPTY",
+    "NOT_NONE",
+    "POSITIVE",
     "between",
     "equals",
     "instance_of",
@@ -122,6 +125,27 @@ def instance_of(t: type | tuple[type, ...]) -> Predicate[object]:
     )
 
 
+NOT_NONE = Predicate[Any](
+    lambda x: x is not None, "not None", lambda x: "expected a not-None value"
+)
+"""A predicate that checks if a value is not None.
+"""
+
+
+# --- numeric predicates ---
+POSITIVE = Predicate[AnyRealNumber](
+    lambda x: x > 0, "positive", lambda x: "expected a positive number"
+)
+"""A predicate that checks if a number is positive.
+"""
+
+NEGATIVE = Predicate[AnyRealNumber](
+    lambda x: x < 0, "negative", lambda x: "expected a negative number"
+)
+"""A predicate that checks if a number is negative.
+"""
+
+
 # --- sequence predicates ---
 def one_of(
     values: Iterable[T],  # pylint:disable=redefined-outer-name
@@ -160,8 +184,10 @@ def length(length: int) -> Predicate[Sized]:
     )
 
 
-NON_EMPTY = ~length(0).with_name("non empty").with_msg(
-    lambda s: "expected non empty sized object"
+NON_EMPTY = (
+    (~length(0))
+    .with_name("non empty")
+    .with_msg(lambda s: "expected non empty sized object")
 )
 """A predicate that checks if the given value is sized and non empty.
 """

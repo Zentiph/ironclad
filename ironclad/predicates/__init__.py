@@ -8,8 +8,11 @@ Tools for creating predicates for logic or validation.
 
 __all__ = [
     "ALWAYS",
+    "NEGATIVE",
     "NEVER",
     "NON_EMPTY",
+    "NOT_NONE",
+    "POSITIVE",
     "Predicate",
     "as_predicate",
     "between",
@@ -17,6 +20,7 @@ __all__ = [
     "instance_of",
     "items",
     "keys",
+    "length",
     "matches_hint",
     "one_of",
     "regex",
@@ -28,13 +32,17 @@ from .compile import as_predicate, matches_hint, spec_contains_int
 from .predicate import Predicate
 from .predicates import (
     ALWAYS,
+    NEGATIVE,
     NEVER,
     NON_EMPTY,
+    NOT_NONE,
+    POSITIVE,
     between,
     equals,
     instance_of,
     items,
     keys,
+    length,
     one_of,
     regex,
     values,
