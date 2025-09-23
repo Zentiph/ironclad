@@ -1,3 +1,2 @@
-* see if "this is silly" can be simplified
 * look thru old repos (like devgizmos) and see if anything could be useful in here
-* change unions to overloads where it makes sense
+* change unions in func args to overloads where it makes sense
