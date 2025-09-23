@@ -1,5 +1,5 @@
 """
-Performance helper functions.
+Functionality for creating an argument binding plan to boost performance.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
