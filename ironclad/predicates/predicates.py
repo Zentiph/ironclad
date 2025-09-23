@@ -9,7 +9,16 @@ Some pre-made predicate functions for ease of use.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar
+from types import UnionType
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypeVar,
+    get_args,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Sized
@@ -45,6 +54,9 @@ class _Comparable(Protocol):
     def __ge__(self, other: Self, /) -> bool: ...
 
 
+# to match python's _ClassInfo type for isinstance()
+_ClassInfo: TypeAlias = type | UnionType | tuple["_ClassInfo", ...]
+
 C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
 
@@ -63,8 +75,41 @@ def _ensure_pred(inner: Callable[[T], bool] | Predicate[T] | Any, /) -> Predicat
     )
 
 
-ALWAYS: Predicate[Any] = Predicate(lambda x: True, "always", "always true")
-NEVER: Predicate[Any] = Predicate(lambda x: False, "never", "always false")
+def _flatten_type(t: _ClassInfo) -> list[type]:
+    stack = [t]
+    types: list[type] = []
+
+    while stack:
+        current = stack.pop()
+        if isinstance(current, UnionType):
+            stack.extend(get_args(current))
+        elif isinstance(current, tuple):
+            stack.extend(current)
+        else:
+            types.append(current)
+
+    types.reverse()  # preserve original left to right order
+
+    # dedupe
+    seen: set[type] = set()
+    out: list[type] = []
+    for tp in types:
+        if tp not in seen:
+            seen.add(tp)
+            out.append(tp)
+
+    return out
+
+
+# TODO: think about moving this to repr.py
+def _class_info_to_str(t: _ClassInfo, /) -> str:
+    if isinstance(t, type):
+        return t.__name__
+    return " | ".join(tp.__name__ for tp in _flatten_type(t))
+
+
+ALWAYS: Predicate[Any] = Predicate(lambda _: True, "always", "always true")
+NEVER: Predicate[Any] = Predicate(lambda _: False, "never", "always false")
 
 
 # --- simple predicates ---
@@ -77,7 +122,7 @@ def equals(value: T) -> Predicate[T]:
     Returns:
         Predicate[T]: A predicate that checks if a value is equal to another.
     """
-    return Predicate(lambda x: x == value, "equals", lambda x: f"expected == {value!r}")
+    return Predicate(lambda x: x == value, "equals", lambda _: f"expected == {value!r}")
 
 
 def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
@@ -97,36 +142,33 @@ def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
         return Predicate(
             lambda x: low <= x <= high,
             "between",
-            lambda x: f"expected {low!r} <= x <= {high!r}",
+            lambda _: f"expected {low!r} <= x <= {high!r}",
         )
     return Predicate(
         lambda x: low < x < high,
         "between",
-        lambda x: f"expected {low!r} < x < {high!r}",
+        lambda _: f"expected {low!r} < x < {high!r}",
     )
 
 
-def instance_of(t: type | tuple[type, ...]) -> Predicate[object]:
+def instance_of(t: _ClassInfo) -> Predicate[object]:
     """A predicate that checks if a value is an instance of a type/types.
 
     Args:
-        t (type | tuple[type, ...]): The type/types to check.
+        t (_ClassInfo): The type/types to check.
 
     Returns:
         Predicate[object]: A predicate that checks if a value is an instance of a type.
     """
-    type_name = (
-        " | ".join(tn.__name__ for tn in t) if isinstance(t, tuple) else t.__name__
-    )
     return Predicate(
         lambda x: isinstance(x, t),
         "instance of",
-        lambda x: f"expected instance of {type_name}",
+        lambda _: f"expected instance of {_class_info_to_str(t)}",
     )
 
 
 NOT_NONE = Predicate[Any](
-    lambda x: x is not None, "not None", lambda x: "expected a not-None value"
+    lambda x: x is not None, "not None", lambda _: "expected a not-None value"
 )
 """A predicate that checks if a value is not None.
 """
@@ -134,13 +176,13 @@ NOT_NONE = Predicate[Any](
 
 # --- numeric predicates ---
 POSITIVE = Predicate[AnyRealNumber](
-    lambda x: x > 0, "positive", lambda x: "expected a positive number"
+    lambda x: x > 0, "positive", lambda _: "expected a positive number"
 )
 """A predicate that checks if a number is positive.
 """
 
 NEGATIVE = Predicate[AnyRealNumber](
-    lambda x: x < 0, "negative", lambda x: "expected a negative number"
+    lambda x: x < 0, "negative", lambda _: "expected a negative number"
 )
 """A predicate that checks if a number is negative.
 """
@@ -163,7 +205,7 @@ def one_of(
     return Predicate(
         lambda x: x in values,
         "one of",
-        lambda x: f"expected one of {tuple(values)!r}",
+        lambda _: f"expected one of {tuple(values)!r}",
     )
 
 
@@ -180,14 +222,14 @@ def length(length: int) -> Predicate[Sized]:
     return Predicate(
         lambda s: hasattr(s, "__len__") and len(s) == length,
         "has length",
-        lambda s: "expected sized object with length " + str(length),
+        lambda _: "expected sized object with length " + str(length),
     )
 
 
 NON_EMPTY = (
     (~length(0))
     .with_name("non empty")
-    .with_msg(lambda s: "expected non empty sized object")
+    .with_msg(lambda _: "expected non empty sized object")
 )
 """A predicate that checks if the given value is sized and non empty.
 """
@@ -208,7 +250,7 @@ def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     return Predicate(
         lambda s: rx.fullmatch(s) is not None,
         "regex",
-        lambda s: f"expected value to match regex/{pattern}/",
+        lambda _: f"expected value to match regex/{pattern}/",
     )
 
 
@@ -232,7 +274,7 @@ def keys(
         pred,
         lambda d: all(pred(key) for key in d),
         "keys",
-        lambda d: f"every key: ({pred.render_msg()})",
+        lambda _: f"every key: ({pred.render_msg()})",
     )
 
 
@@ -251,7 +293,7 @@ def values(inner: Callable[[T], bool] | Predicate[T], /) -> Predicate[Iterable[T
         pred,
         lambda d: all(pred(val) for val in d.values()),
         "values",
-        lambda d: f"every value: ({pred.render_msg()})",
+        lambda _: f"every value: ({pred.render_msg()})",
     )
 
 
@@ -281,7 +323,7 @@ def items(
         and key_validator(d.keys())
         and val_validator(d.values()),
         "items",
-        lambda d: f"every item: ({key_validator.render_msg()}, "
+        lambda _: f"every item: ({key_validator.render_msg()}, "
         + val_validator.render_msg()
         + ")",
     )
