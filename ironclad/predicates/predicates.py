@@ -19,6 +19,21 @@ from ..types import DEFAULT_ENFORCE_OPTIONS
 from .compile import matches_hint
 from .predicate import Predicate
 
+__all__ = [
+    "ALWAYS",
+    "NEVER",
+    "NON_EMPTY",
+    "between",
+    "equals",
+    "instance_of",
+    "items",
+    "keys",
+    "length",
+    "one_of",
+    "regex",
+    "values",
+]
+
 
 class _Comparable(Protocol):
     def __lt__(self, other: Self, /) -> bool: ...
@@ -88,7 +103,7 @@ def between(low: C, high: C, /, *, inclusive: bool = True) -> Predicate[C]:
     )
 
 
-def is_instance(t: type | tuple[type, ...]) -> Predicate[object]:
+def instance_of(t: type | tuple[type, ...]) -> Predicate[object]:
     """A predicate that checks if a value is an instance of a type/types.
 
     Args:
@@ -102,17 +117,17 @@ def is_instance(t: type | tuple[type, ...]) -> Predicate[object]:
     )
     return Predicate(
         lambda x: isinstance(x, t),
-        "is instance",
+        "instance of",
         lambda x: f"expected instance of {type_name}",
     )
 
 
 # --- sequence predicates ---
-def is_in(
+def one_of(
     values: Iterable[T],  # pylint:disable=redefined-outer-name
     /,
 ) -> Predicate[T]:
-    """A predicate that checks if a value is in an iterable.
+    """A predicate that checks if a value is one of the values in an iterable.
 
     Args:
     values (Iterable[T]): The iterable of valid values.
@@ -123,12 +138,12 @@ def is_in(
     """
     return Predicate(
         lambda x: x in values,
-        "is in",
+        "one of",
         lambda x: f"expected one of {tuple(values)!r}",
     )
 
 
-def has_length(length: int) -> Predicate[Sized]:
+def length(length: int) -> Predicate[Sized]:
     """A predicate that checks if the given value has a size matching the given length.
 
     Args:
@@ -145,7 +160,7 @@ def has_length(length: int) -> Predicate[Sized]:
     )
 
 
-non_empty = ~has_length(0).with_name("non empty").with_msg(
+NON_EMPTY = ~length(0).with_name("non empty").with_msg(
     lambda s: "expected non empty sized object"
 )
 """A predicate that checks if the given value is sized and non empty.

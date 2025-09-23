@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+__all__ = ["Predicate"]
+
 T = TypeVar("T")
 
 

@@ -10,6 +10,8 @@ import inspect
 from dataclasses import dataclass
 from typing import Any
 
+__all__ = ["fast_bind", "make_plan", "to_call_args"]
+
 
 @dataclass(frozen=True)
 class _Plan:

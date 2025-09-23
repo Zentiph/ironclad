@@ -19,6 +19,8 @@ from .predicates import as_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
+__all__ = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
+
 
 class InvalidOverloadError(TypeError):
     """Raised when an invalid overload is called for a Multimethod."""

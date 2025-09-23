@@ -6,9 +6,9 @@ Types for ironclad.
 :license: MIT; see LICENSE.md for more details
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
+
+__all__ = ["DEFAULT_ENFORCE_OPTIONS", "EnforceOptions"]
 
 
 @dataclass(frozen=True)
