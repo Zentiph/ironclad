@@ -18,6 +18,7 @@ from typing import (
     TypeAlias,
     TypeVar,
     get_args,
+    overload,
 )
 
 if TYPE_CHECKING:
@@ -209,7 +210,7 @@ def one_of(
     )
 
 
-def length(length: int) -> Predicate[Sized]:
+def length(length: int, /) -> Predicate[Sized]:
     """A predicate that checks if the given value has a size matching the given length.
 
     Args:
@@ -257,13 +258,17 @@ def regex(pattern: str, flags: int = 0) -> Predicate[str]:
 # --- map predicates ---
 
 
+@overload
+def keys(inner: Predicate[Hashable], /) -> Predicate[Iterable[Hashable]]: ...
+@overload
+def keys(inner: Callable[[Hashable], bool], /) -> Predicate[Iterable[Hashable]]: ...
 def keys(
-    inner: Callable[[Hashable], bool] | Predicate[Hashable], /
+    inner: Predicate[Hashable] | Callable[[Hashable], bool], /
 ) -> Predicate[Iterable[Hashable]]:
     """A predicate that checks if every key in a dictionary is accepted by a predicate.
 
     Args:
-        inner (Callable[[Hashable], bool] | Predicate[Hashable]): The inner predicate.
+        inner (Predicate[Hashable] | Callable[[Hashable], bool]): The inner predicate.
 
     Returns:
         Predicate[Iterable[Hashable]]: A predicate that checks if every key
@@ -278,11 +283,15 @@ def keys(
     )
 
 
-def values(inner: Callable[[T], bool] | Predicate[T], /) -> Predicate[Iterable[T]]:
+@overload
+def values(inner: Predicate[T], /) -> Predicate[Iterable[T]]: ...
+@overload
+def values(inner: Callable[[T], bool], /) -> Predicate[Iterable[T]]: ...
+def values(inner: Predicate[T] | Callable[[T], bool], /) -> Predicate[Iterable[T]]:
     """A predicate that checks if every value in a dict is accepted by a predicate.
 
     Args:
-        inner (Callable[[T], bool] | Predicate[T]): The inner predicate.
+        inner (Predicate[T] | Callable[[T], bool]): The inner predicate.
 
     Returns:
         Predicate[T]: A predicate that checks if every value
@@ -297,17 +306,33 @@ def values(inner: Callable[[T], bool] | Predicate[T], /) -> Predicate[Iterable[T
     )
 
 
+@overload
 def items(
-    key_predicate: Callable[[Hashable], bool] | Predicate[Hashable],
-    value_predicate: Callable[[T], bool] | Predicate[T],
+    key_predicate: Predicate[Hashable], value_predicate: Predicate[T], /
+) -> Predicate[dict[Hashable, T]]: ...
+@overload
+def items(
+    key_predicate: Callable[[Hashable], bool], value_predicate: Predicate[T], /
+) -> Predicate[dict[Hashable, T]]: ...
+@overload
+def items(
+    key_predicate: Predicate[Hashable], value_predicate: Callable[[T], bool], /
+) -> Predicate[dict[Hashable, T]]: ...
+@overload
+def items(
+    key_predicate: Callable[[Hashable], bool], value_predicate: Callable[[T], bool], /
+) -> Predicate[dict[Hashable, T]]: ...
+def items(
+    key_predicate: Predicate[Hashable] | Callable[[Hashable], bool],
+    value_predicate: Predicate[T] | Callable[[T], bool],
     /,
 ) -> Predicate[dict[Hashable, T]]:
     """A predicate that checks if every item in a dict is accepted by the predicates.
 
     Args:
-        key_predicate (Callable[[Hashable], bool] | Predicate[Hashable]):
+        key_predicate (Predicate[Hashable] | Callable[[Hashable], bool]):
             The predicate for the keys.
-        value_predicate (Callable[[T], bool] | Predicate[T]):
+        value_predicate (Predicate[T] | Callable[[T], bool]):
             The predicate for the values.
 
     Returns:
