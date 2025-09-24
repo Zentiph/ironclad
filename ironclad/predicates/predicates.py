@@ -107,6 +107,47 @@ def is_instance(t: type | tuple[type, ...]) -> Predicate[object]:
     )
 
 
+# --- combinations ---
+def all_of(*predicates: Predicate[T]) -> Predicate[T]:
+    """Combine multiple predicates, merging their conditions with an 'AND'.
+
+    Args:
+        predicates (Predicate[T]): The predicates to merge.
+
+    Raises:
+        ValueError: If there are no predicates given.
+
+    Returns:
+        Predicate[T]: The combined predicate.
+    """
+    if len(predicates) < 1:
+        raise ValueError("Cannot create a combined predicate from 0 predicates.")
+    final = predicates[0]
+    for pred in predicates[1::]:
+        final = final & pred
+    return final
+
+
+def any_of(*predicates: Predicate[T]) -> Predicate[T]:
+    """Combine multiple predicates, merging their conditions with an 'OR'.
+
+    Args:
+        predicates (Predicate[T]): The predicates to merge.
+
+    Raises:
+        ValueError: If there are no predicates given.
+
+    Returns:
+        Predicate[T]: The combined predicate.
+    """
+    if len(predicates) < 1:
+        raise ValueError("Cannot create a combined predicate from 0 predicates.")
+    final = predicates[0]
+    for pred in predicates[1::]:
+        final = final | pred
+    return final
+
+
 # --- sequence predicates ---
 def is_in(
     values: Iterable[T],  # pylint:disable=redefined-outer-name
@@ -124,7 +165,7 @@ def is_in(
     return Predicate(
         lambda x: x in values,
         "is in",
-        lambda x: f"expected one of {tuple(values)!r}",
+        lambda x: f"expected one of {values!r}",
     )
 
 
@@ -167,7 +208,7 @@ def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     return Predicate(
         lambda s: rx.fullmatch(s) is not None,
         "regex",
-        lambda s: f"expected value to match regex/{pattern}/",
+        lambda s: f"expected value to match regex/{pattern}/ with {flags} flags",
     )
 
 

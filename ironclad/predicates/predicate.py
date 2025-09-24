@@ -206,6 +206,8 @@ class Predicate(Generic[T]):
             f"({other.__render_msg_no_context(x)})",
         )
 
+    __rand__ = __and__
+
     # pylint: disable=protected-access
     def __or__(self, other: Predicate[T]) -> Predicate[T]:
         """Combine this predicate with another, merging their conditions with an 'OR'.
@@ -223,6 +225,8 @@ class Predicate(Generic[T]):
             f"({other.__render_msg_no_context(x)})",
         )
 
+    __ror__ = __or__
+
     def __invert__(self) -> Predicate[T]:
         """Invert this predicate.
 
@@ -235,8 +239,7 @@ class Predicate(Generic[T]):
             lambda x: f"not ({self.__render_msg_no_context(x)})",
         )
 
-    __rand__ = __and__
-    __ror__ = __or__
+    negate = __invert__
 
     def implies(self, other: Predicate[T]) -> Predicate[T]:
         """A predicate which checks that this predicate implies another predicate.
@@ -306,22 +309,6 @@ class Predicate(Generic[T]):
             lambda i: any(self(e) for e in i),
             "any(" + self.__name + ")",
             lambda i: f"at least one element: ({self.__render_msg_no_context(i)})",
-        )
-
-    def on_attr(self, getter: Callable[[object], Any]) -> Predicate[T]:
-        """Modify this predicate to apply its condition to a property of object.
-
-        Args:
-            getter (Callable[[object], Any]): A getter for the object's attribute.
-
-        Returns:
-            Predicate[T]: The new predicate.
-        """
-        return self.__lift(
-            lambda o: self.__func(getter(o)),
-            # TODO: improve these messages if possible
-            self.__name + " on attr",
-            lambda o: f"on attribute: ({self.__render_msg_no_context(o)})",
         )
 
     # --- safety / debugging ---
