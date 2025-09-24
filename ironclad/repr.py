@@ -18,6 +18,8 @@ from typing import (
     get_origin,
 )
 
+__all__ = ["type_repr"]
+
 _UNION_TYPES = (Union, getattr(types, "UnionType", Union))  # pylint:disable=consider-alternative-union-syntax
 
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 __all__ = [
     "DEFAULT_ENFORCE_OPTIONS",
+    "ClassInfo",
     "EnforceOptions",
     "Multimethod",
     "coerce_types",
@@ -47,7 +48,7 @@ from .arg_validation import (
 from .multimethod import Multimethod, runtime_overload
 from .predicates import matches_hint
 from .repr import type_repr
-from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
+from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
 _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 
@@ -65,25 +66,25 @@ class _VersionInfo(NamedTuple):
 
 def _parse_version(v: str) -> _VersionInfo:
     m = __import__("re").match(
-        r"^(?P<maj>\d+)\.(?P<min>\d+)\.(?P<micro>\d+)(?:(?P<pre>a|b|rc))?$",
+        r"^(?P<maj>\d+)\.(?P<min>\d+)\.(?P<mic>\d+)(?:(?P<lvl>a|b|rc))?$",
         v,
     )
     if not m:
         # fallback if someone sets a non-PEP440 string
         return _VersionInfo(0, 0, 0, "alpha")
 
-    pre_map: dict[str | None, _ReleaseLevel] = {
+    lvl_map: dict[str | None, _ReleaseLevel] = {
         None: "final",
         "a": "alpha",
         "b": "beta",
         "rc": "candidate",
     }
-    pre = m.group("pre")
+    lvl = m.group("lvl")
     return _VersionInfo(
         int(m.group("maj")),
         int(m.group("min")),
-        int(m.group("micro")),
-        pre_map[pre],
+        int(m.group("mic")),
+        lvl_map[lvl],
     )
 
 

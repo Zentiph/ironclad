@@ -6,7 +6,8 @@ Compiled predicates for value/type checks.
 :license: MIT; see LICENSE.md for more details
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Set as AbcSet
 from functools import lru_cache
 from types import UnionType
 from typing import Annotated, Any, Literal, TypeVar, Union, get_args, get_origin
@@ -15,7 +16,9 @@ from ..repr import type_repr
 from ..types import EnforceOptions
 from .predicate import Predicate
 
-CACHE_SIZE = 2048
+__all__ = ["as_predicate", "matches_hint", "spec_contains_int"]
+
+_CACHE_SIZE = 2048
 
 
 def _matches_typevar(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
@@ -70,19 +73,9 @@ def _matches_collection_hint(
             )
         )
 
-    if origin in (list, set, frozenset, Sequence):
+    if origin in (list, set, frozenset, Sequence, AbcSet, MutableSequence):
         elem = (get_args(hint) or (Any,))[0]
-        pytype = (  # this is silly
-            list
-            if origin is list
-            else set
-            if origin is set
-            else frozenset
-            if origin is frozenset
-            else Sequence
-        )
-
-        return isinstance(x, pytype) and all(matches_hint(e, elem, opts) for e in x)
+        return isinstance(x, origin) and all(matches_hint(e, elem, opts) for e in x)
 
     if origin in (dict, Mapping):
         if not isinstance(x, Mapping):
@@ -113,10 +106,10 @@ def _matches_normal(x: Any, hint: Any, origin: Any, opts: EnforceOptions, /) -> 
         return origin is not None and matches_hint(x, origin, opts)
 
 
-@lru_cache(maxsize=CACHE_SIZE)
+@lru_cache(maxsize=_CACHE_SIZE)
 def _hint_pred_cached(
     hint: Any, /, *, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
-) -> Predicate:
+) -> Predicate[Any]:
     # cached wrapper around matches_hint for hashable hints
     opts = EnforceOptions(
         allow_subclasses=allow_subclasses,
@@ -128,7 +121,7 @@ def _hint_pred_cached(
 
 def _hint_pred_uncached(
     hint: Any, /, *, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
-) -> Predicate:
+) -> Predicate[Any]:
     # cached wrapper around matches_hint for hashable hints
     opts = EnforceOptions(
         allow_subclasses=allow_subclasses,
@@ -186,7 +179,7 @@ def spec_contains_int(spec: Any) -> bool:
     return False
 
 
-def as_predicate(spec: Any, options: EnforceOptions) -> Predicate:
+def as_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
     """Turn a typing spec or an existing Predicate into a Predicate with caching.
 
     Caching will not work if a type hint is not cachable.
@@ -196,7 +189,7 @@ def as_predicate(spec: Any, options: EnforceOptions) -> Predicate:
         options (EnforceOptions): The type enforcement options.
 
     Returns:
-        Predicate: The cached predicate.
+        Predicate[Any]: The cached predicate.
     """
     if isinstance(spec, Predicate):
         return spec

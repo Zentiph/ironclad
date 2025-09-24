@@ -8,12 +8,15 @@ The predicate class.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+__all__ = ["Predicate"]
+
 T = TypeVar("T")
+O = TypeVar("O", bound=object)
 
 
 class Predicate(Generic[T]):
@@ -25,6 +28,16 @@ class Predicate(Generic[T]):
 
     __slots__ = ("__context", "__func", "__msg", "__name")
 
+    @overload
+    def __init__(self, func: Callable[[T], bool], /, name: str, msg: str) -> None: ...
+    @overload
+    def __init__(
+        self, func: Callable[[T], bool], /, name: str, msg: Callable[[T | None], str]
+    ) -> None: ...
+    @overload
+    def __init__(
+        self, func: Callable[[T], bool], /, name: str, msg: None = None
+    ) -> None: ...
     def __init__(
         self,
         func: Callable[[T], bool],
@@ -70,6 +83,10 @@ class Predicate(Generic[T]):
         """
         return self.__name
 
+    @overload
+    def render_msg(self, x: T, /, *, max_chain: int = 6) -> str: ...
+    @overload
+    def render_msg(self, x: None = None, /, *, max_chain: int = 6) -> str: ...
     def render_msg(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
         """Render this predicate's message with a given input value.
 
@@ -85,6 +102,10 @@ class Predicate(Generic[T]):
             self.__render_msg_no_context(x), list(self.__context), max_chain=max_chain
         )
 
+    @overload
+    def render_tree(self, x: T, /) -> str: ...
+    @overload
+    def render_tree(self, x: None = None, /) -> str: ...
     def render_tree(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value as a tree.
 
@@ -175,6 +196,10 @@ class Predicate(Generic[T]):
         pred._set_context(self.__context)
         return pred
 
+    @overload
+    def with_msg(self, msg: str) -> Predicate[T]: ...
+    @overload
+    def with_msg(self, msg: Callable[[T | None], str]) -> Predicate[T]: ...
     def with_msg(self, msg: str | Callable[[T | None], str]) -> Predicate[T]:
         """Clone this predicate and give it a new message.
 
@@ -264,6 +289,31 @@ class Predicate(Generic[T]):
         pred._set_context((*self.__context, self))
         return pred
 
+    @overload
+    @classmethod
+    def lift_from(
+        cls, pred: Predicate[Any], /, func: Callable[[Any], bool], name: str, msg: str
+    ) -> Predicate[Any]: ...
+    @overload
+    @classmethod
+    def lift_from(
+        cls,
+        pred: Predicate[Any],
+        /,
+        func: Callable[[Any], bool],
+        name: str,
+        msg: Callable[[Any], str],
+    ) -> Predicate[Any]: ...
+    @overload
+    @classmethod
+    def lift_from(
+        cls,
+        pred: Predicate[Any],
+        /,
+        func: Callable[[Any], bool],
+        name: str,
+        msg: None = None,
+    ) -> Predicate[Any]: ...
     @classmethod
     def lift_from(
         cls,
@@ -286,6 +336,24 @@ class Predicate(Generic[T]):
             Predicate[Any]: The lifted predicate.
         """
         return pred.__lift(func, name, msg)
+
+    def on(
+        self,
+        getter: Callable[[O], T],
+        /,
+        name: str | None = None,
+        msg: str | Callable[[Any], str] | None = None,
+    ) -> Predicate[O]:
+        """Modify this predicate with a contramap to check if a certain property of an object validates it.
+
+        Args:
+            getter (Callable[[O], T]): _description_
+            name (str | None, optional): _description_. Defaults to None.
+            msg (str | Callable[[Any], str] | None, optional): _description_. Defaults to None.
+
+        Returns:
+            Predicate[O]: _description_
+        """
 
     def all(self) -> Predicate[Iterable[T]]:
         """Modify this predicate to check if every element in an iterable is accepted.

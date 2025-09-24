@@ -12,4 +12,4 @@ __all__ = [
     "to_call_args",
 ]
 
-from .perf import fast_bind, make_plan, to_call_args
+from .plan import fast_bind, make_plan, to_call_args

@@ -6,9 +6,11 @@ Types for ironclad.
 :license: MIT; see LICENSE.md for more details
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
+from types import UnionType
+from typing import TypeAlias
+
+__all__ = ["DEFAULT_ENFORCE_OPTIONS", "ClassInfo", "EnforceOptions"]
 
 
 @dataclass(frozen=True)
@@ -27,4 +29,8 @@ DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
 """Default type enforcement options.
 
 (allow_subclasses=True, check_defaults=True, strict_bools=True)
+"""
+
+ClassInfo: TypeAlias = type | UnionType | tuple["ClassInfo", ...]
+"""A type alias to match Python's _ClassInfo used for isinstance() arguments.
 """

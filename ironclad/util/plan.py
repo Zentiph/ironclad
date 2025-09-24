@@ -1,5 +1,5 @@
 """
-Performance helper functions.
+Functionality for creating an argument binding plan to boost performance.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
@@ -9,6 +9,8 @@ Performance helper functions.
 import inspect
 from dataclasses import dataclass
 from typing import Any
+
+__all__ = ["fast_bind", "make_plan", "to_call_args"]
 
 
 @dataclass(frozen=True)

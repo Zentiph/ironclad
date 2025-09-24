@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 from .predicates import as_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
+
+__all__ = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
 
 
 class InvalidOverloadError(TypeError):
@@ -29,6 +31,18 @@ class Multimethod:
 
     __slots__ = ("__name__", "_implementations", "options")
 
+    @overload
+    def __init__(
+        self,
+        func: Callable[..., Any],
+        /,
+        *,
+        options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self, func: None = None, /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
+    ) -> None: ...
     def __init__(
         self,
         func: Callable[..., Any] | None = None,
@@ -116,7 +130,7 @@ class Multimethod:
                 matches.append((score, func))
 
         if not matches:
-            want = " | ".join(self._sig_str(sig) for sig, *_ in self._implementations)
+            want = " | ".join(self.__sig_str(sig) for sig, *_ in self._implementations)
             got = ", ".join(type_repr(type(arg)) for arg in args)
             if kwargs:
                 got += (", " if got else "") + "**kwargs"
@@ -128,7 +142,7 @@ class Multimethod:
         matches.sort(key=lambda t: t[0], reverse=True)
         return matches[0][1](*args, **kwargs)
 
-    def _sig_str(self, sig: inspect.Signature, /) -> str:
+    def __sig_str(self, sig: inspect.Signature, /) -> str:
         parts: list[str] = []
 
         for name, param in sig.parameters.items():
