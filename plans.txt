@@ -1,2 +1,1 @@
 * look thru old repos (like devgizmos) and see if anything could be useful in here
-* change unions in func args to overloads where it makes sense

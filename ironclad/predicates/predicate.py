@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 __all__ = ["Predicate"]
 
 T = TypeVar("T")
+O = TypeVar("O", bound=object)
 
 
 class Predicate(Generic[T]):
@@ -332,6 +333,24 @@ class Predicate(Generic[T]):
             Predicate[Any]: The lifted predicate.
         """
         return pred.__lift(func, name, msg)
+
+    def on(
+        self,
+        getter: Callable[[O], T],
+        /,
+        name: str | None = None,
+        msg: str | Callable[[Any], str] | None = None,
+    ) -> Predicate[O]:
+        """Modify this predicate with a contramap to check if a certain property of an object validates it.
+
+        Args:
+            getter (Callable[[O], T]): _description_
+            name (str | None, optional): _description_. Defaults to None.
+            msg (str | Callable[[Any], str] | None, optional): _description_. Defaults to None.
+
+        Returns:
+            Predicate[O]: _description_
+        """
 
     def all(self) -> Predicate[Iterable[T]]:
         """Modify this predicate to check if every element in an iterable is accepted.
