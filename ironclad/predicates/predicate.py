@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 __all__ = ["Predicate"]
 
 T = TypeVar("T")
-O = TypeVar("O", bound=object)
+U = TypeVar("U")
+Obj = TypeVar("Obj", bound=object)
 
 
 class Predicate(Generic[T]):
@@ -75,6 +76,15 @@ class Predicate(Generic[T]):
 
     # --- props --- #
     @property
+    def func(self) -> Callable[[T], bool]:
+        """Get the predicate function of this predicate object.
+
+        Returns:
+            Callable[[T], bool]: The predicate function.
+        """
+        return self.__func
+
+    @property
     def name(self) -> str:
         """Get the name of this predicate.
 
@@ -83,10 +93,20 @@ class Predicate(Generic[T]):
         """
         return self.__name
 
+    @property
+    def msg(self) -> str | Callable[[T | None], str]:
+        """Get the failure name of this predicate.
+
+        Returns:
+            str | Callable[[T | None], str]: The failure message of this predicate.
+        """
+        return self.__msg
+
+    # --- pretty strings ---
     @overload
     def render_msg(self, x: T, /, *, max_chain: int = 6) -> str: ...
     @overload
-    def render_msg(self, x: None = None, /, *, max_chain: int = 6) -> str: ...
+    def render_msg(self, x: None = ..., /, *, max_chain: int = 6) -> str: ...
     def render_msg(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
         """Render this predicate's message with a given input value.
 
@@ -105,7 +125,7 @@ class Predicate(Generic[T]):
     @overload
     def render_tree(self, x: T, /) -> str: ...
     @overload
-    def render_tree(self, x: None = None, /) -> str: ...
+    def render_tree(self, x: None = ..., /) -> str: ...
     def render_tree(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value as a tree.
 
@@ -148,7 +168,7 @@ class Predicate(Generic[T]):
         )
         return f"{msg} [via {chain}]"
 
-    def _set_context(self, context: tuple[Predicate[T], ...]) -> None:
+    def _set_context(self, context: tuple[Predicate[Any], ...]) -> None:
         self.__context = context
 
     # --- diagnostics --- #
@@ -278,93 +298,107 @@ class Predicate(Generic[T]):
         return (~self) | other
 
     # --- lifters ---
-    def __lift(
+    @overload
+    def lift(
+        self,
+        func: Callable[[T], bool],
+        /,
+        name: str | None,
+        msg: str | Callable[[T | None], str],
+    ) -> Predicate[T]: ...
+    @overload
+    def lift(
+        self,
+        func: Callable[[U], bool],
+        /,
+        name: str | None,
+        msg: str | Callable[[U | None], str],
+    ) -> Predicate[U]: ...
+    def lift(
         self,
         func: Callable[[Any], bool],
         /,
-        name: str,
-        msg: str | Callable[[Any], str] | None = None,
+        name: str | None,
+        msg: str | Callable[[Any | None], str],
     ) -> Predicate[Any]:
-        pred = Predicate(func, name, msg)
-        pred._set_context((*self.__context, self))
-        return pred
+        """Lift this predicate to create a new one.
 
-    @overload
-    @classmethod
-    def lift_from(
-        cls, pred: Predicate[Any], /, func: Callable[[Any], bool], name: str, msg: str
-    ) -> Predicate[Any]: ...
-    @overload
-    @classmethod
-    def lift_from(
-        cls,
-        pred: Predicate[Any],
-        /,
-        func: Callable[[Any], bool],
-        name: str,
-        msg: Callable[[Any], str],
-    ) -> Predicate[Any]: ...
-    @overload
-    @classmethod
-    def lift_from(
-        cls,
-        pred: Predicate[Any],
-        /,
-        func: Callable[[Any], bool],
-        name: str,
-        msg: None = None,
-    ) -> Predicate[Any]: ...
-    @classmethod
-    def lift_from(
-        cls,
-        pred: Predicate[Any],
-        /,
-        func: Callable[[Any], bool],
-        name: str,
-        msg: str | Callable[[Any], str] | None = None,
-    ) -> Predicate[Any]:
-        """Create a new predicate lifted from another.
+        This is the ideal way to create a predicate based on another one, because
+        this method adds the previous predicate to the new predicate's failure context.
+
 
         Args:
-            pred (Predicate[Any]): The predicate to lift from.
             func (Callable[[Any], bool]): The new predicate function.
-            name (str): The new predicate name.
-            msg (str | Callable[[Any], str] | None, optional):
-                The new predicate message. Defaults to None.
+            name (str | None): The new predicate's name.
+                Copies the old one if None.
+            msg (str | Callable[[Any | None], str], None):
+                The new predicate's failure message.
 
         Returns:
             Predicate[Any]: The lifted predicate.
         """
-        return pred.__lift(func, name, msg)
+        if name is None:
+            name = self.__name
+
+        pred = Predicate(func, name, msg)
+        pred._set_context((*self.__context, self))
+        return pred
 
     def on(
         self,
-        getter: Callable[[O], T],
+        getter: Callable[[Obj], T],
         /,
-        name: str | None = None,
-        msg: str | Callable[[Any], str] | None = None,
-    ) -> Predicate[O]:
-        """Modify this predicate with a contramap to check if a certain property of an object validates it.
+    ) -> Predicate[Obj]:
+        """Modify this predicate to check if a property of an object validates it.
 
         Args:
-            getter (Callable[[O], T]): _description_
-            name (str | None, optional): _description_. Defaults to None.
-            msg (str | Callable[[Any], str] | None, optional): _description_. Defaults to None.
+            getter (Callable[[Obj], T]): function to access the property of an object.
 
         Returns:
-            Predicate[O]: _description_
+            Predicate[Obj]: The new predicate.
         """
+        return Predicate(
+            lambda o: self.__func(getter(o)),
+            self.__name,
+            lambda o: self.__render_msg_no_context(
+                getter(o) if o is not None else None
+            ),
+        )
 
+    # TODO: there's gotta be a better way to do this
     def all(self) -> Predicate[Iterable[T]]:
         """Modify this predicate to check if every element in an iterable is accepted.
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
         """
-        return self.__lift(
-            lambda i: all(self(e) for e in i),
-            "all(" + self.__name + ")",
-            lambda i: f"every element: ({self.__render_msg_no_context(i)})",
+
+        def f(it: Iterable[T]) -> bool:
+            return all(self.__func(x) for x in it)
+
+        name = f"all({self.__name})"
+        if isinstance(self.__msg, str):
+            return self.lift(f, name, self.__msg)
+
+        # get a representative from the iterable
+        def new_msg(it: Iterable[T] | None) -> str:
+            if it is None:
+                rep: T | None = None
+            else:
+                conv_it = iter(it)
+                rep = next(conv_it, None)
+            # redundant if callable check here, since we check if self.__msg
+            # is a str above, but mypy gets angry if we don't do this.
+            return (
+                f"for every element: {self.__msg(rep)}"
+                if callable(self.__msg)
+                else "predicate failed"
+            )
+
+        return self.lift(
+            f,
+            name,
+            new_msg,
         )
 
     def any(self) -> Predicate[Iterable[T]]:
@@ -373,10 +407,34 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Iterable[T]]: The new predicate.
         """
-        return self.__lift(
-            lambda i: any(self(e) for e in i),
-            "any(" + self.__name + ")",
-            lambda i: f"at least one element: ({self.__render_msg_no_context(i)})",
+
+        def f(it: Iterable[T]) -> bool:
+            return any(self.__func(x) for x in it)
+
+        name = f"any({self.__name})"
+
+        if isinstance(self.__msg, str):
+            return self.lift(f, name, self.__msg)
+
+        # get a representative from the iterable
+        def new_msg(it: Iterable[T] | None) -> str:
+            if it is None:
+                rep: T | None = None
+            else:
+                conv_it = iter(it)
+                rep = next(conv_it, None)
+            # redundant if callable check here, since we check if self.__msg
+            # is a str above, but mypy gets angry if we don't do this.
+            return (
+                f"for at least one element: {self.__msg(rep)}"
+                if callable(self.__msg)
+                else "predicate failed"
+            )
+
+        return self.lift(
+            f,
+            name,
+            new_msg,
         )
 
     # --- safety / debugging ---

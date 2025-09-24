@@ -10,23 +10,13 @@ from __future__ import annotations
 
 import re
 from types import UnionType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Protocol,
-    Self,
-    TypeAlias,
-    TypeVar,
-    get_args,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar, get_args
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Iterable, Sized
+    from collections.abc import Iterable, Sized
 
-from ..repr import type_repr
-from ..types import DEFAULT_ENFORCE_OPTIONS, ClassInfo
-from .compile import matches_hint
+    from ..types import ClassInfo
+
 from .predicate import Predicate
 
 __all__ = [
@@ -39,12 +29,9 @@ __all__ = [
     "between",
     "equals",
     "instance_of",
-    "items",
-    "keys",
     "length",
     "one_of",
     "regex",
-    "values",
 ]
 
 
@@ -59,18 +46,6 @@ C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
 
 AnyRealNumber: TypeAlias = int | float
-
-
-def _ensure_pred(inner: Callable[[T], bool] | Predicate[T] | Any, /) -> Predicate[T]:
-    if isinstance(inner, Predicate):
-        return inner
-
-    # prefer typing-aware matcher
-    return Predicate[T](
-        lambda x: matches_hint(x, inner, DEFAULT_ENFORCE_OPTIONS),
-        "predicate",
-        f"'{type_repr(inner)}'",
-    )
 
 
 def _flatten_type(t: ClassInfo) -> list[type]:
@@ -243,27 +218,25 @@ def one_of(
     """
     return Predicate(
         lambda x: x in values,
-        "is in",
-        lambda x: f"expected one of {values!r}",
         "one of",
-        lambda _: f"expected one of {tuple(values)!r}",
+        lambda _: f"expected one of {values!r}",
     )
 
 
-def length(length: int, /) -> Predicate[Sized]:
+def length(size: int, /) -> Predicate[Sized]:
     """A predicate that checks if the given value has a size matching the given length.
 
     Args:
-        length (int): The approved length of the sized object.
+        size (int): The approved length of the sized object.
 
     Returns:
         Predicate[Sized]: A predicate that checks
             if the object's size matches the length.
     """
     return Predicate(
-        lambda s: hasattr(s, "__len__") and len(s) == length,
-        "has length",
-        lambda _: "expected sized object with length " + str(length),
+        lambda s: hasattr(s, "__len__") and len(s) == size,
+        "length",
+        lambda _: "expected sized object with length " + str(size),
     )
 
 
@@ -291,105 +264,5 @@ def regex(pattern: str, flags: int = 0) -> Predicate[str]:
     return Predicate(
         lambda s: rx.fullmatch(s) is not None,
         "regex",
-        lambda s: f"expected value to match regex/{pattern}/ with {flags} flags",
-        lambda _: f"expected value to match regex/{pattern}/",
-    )
-
-
-# --- map predicates ---
-
-
-@overload
-def keys(inner: Predicate[Hashable], /) -> Predicate[Iterable[Hashable]]: ...
-@overload
-def keys(inner: Callable[[Hashable], bool], /) -> Predicate[Iterable[Hashable]]: ...
-def keys(
-    inner: Predicate[Hashable] | Callable[[Hashable], bool], /
-) -> Predicate[Iterable[Hashable]]:
-    """A predicate that checks if every key in a dictionary is accepted by a predicate.
-
-    Args:
-        inner (Predicate[Hashable] | Callable[[Hashable], bool]): The inner predicate.
-
-    Returns:
-        Predicate[Iterable[Hashable]]: A predicate that checks if every key
-            in a dictionary is accepted by a predicate.
-    """
-    pred: Predicate[Hashable] = _ensure_pred(inner)
-    return Predicate.lift_from(
-        pred,
-        lambda d: all(pred(key) for key in d),
-        "keys",
-        lambda _: f"every key: ({pred.render_msg()})",
-    )
-
-
-@overload
-def values(inner: Predicate[T], /) -> Predicate[Iterable[T]]: ...
-@overload
-def values(inner: Callable[[T], bool], /) -> Predicate[Iterable[T]]: ...
-def values(inner: Predicate[T] | Callable[[T], bool], /) -> Predicate[Iterable[T]]:
-    """A predicate that checks if every value in a dict is accepted by a predicate.
-
-    Args:
-        inner (Predicate[T] | Callable[[T], bool]): The inner predicate.
-
-    Returns:
-        Predicate[T]: A predicate that checks if every value
-            in a dict is accepted by a predicate.
-    """
-    pred: Predicate[T] = _ensure_pred(inner)
-    return Predicate.lift_from(
-        pred,
-        lambda d: all(pred(val) for val in d.values()),
-        "values",
-        lambda _: f"every value: ({pred.render_msg()})",
-    )
-
-
-@overload
-def items(
-    key_predicate: Predicate[Hashable], value_predicate: Predicate[T], /
-) -> Predicate[dict[Hashable, T]]: ...
-@overload
-def items(
-    key_predicate: Callable[[Hashable], bool], value_predicate: Predicate[T], /
-) -> Predicate[dict[Hashable, T]]: ...
-@overload
-def items(
-    key_predicate: Predicate[Hashable], value_predicate: Callable[[T], bool], /
-) -> Predicate[dict[Hashable, T]]: ...
-@overload
-def items(
-    key_predicate: Callable[[Hashable], bool], value_predicate: Callable[[T], bool], /
-) -> Predicate[dict[Hashable, T]]: ...
-def items(
-    key_predicate: Predicate[Hashable] | Callable[[Hashable], bool],
-    value_predicate: Predicate[T] | Callable[[T], bool],
-    /,
-) -> Predicate[dict[Hashable, T]]:
-    """A predicate that checks if every item in a dict is accepted by the predicates.
-
-    Args:
-        key_predicate (Predicate[Hashable] | Callable[[Hashable], bool]):
-            The predicate for the keys.
-        value_predicate (Predicate[T] | Callable[[T], bool]):
-            The predicate for the values.
-
-    Returns:
-        Predicate[tuple[Hashable, T]]: A predicate that checks if every item
-            in a dict is accepted by the predicates.
-    """
-    key_validator = keys(key_predicate)
-    val_validator = values(value_predicate)
-
-    return Predicate(
-        lambda d: hasattr(d, "keys")
-        and hasattr(d, "values")
-        and key_validator(d.keys())
-        and val_validator(d.values()),
-        "items",
-        lambda _: f"every item: ({key_validator.render_msg()}, "
-        + val_validator.render_msg()
-        + ")",
+        lambda _: f"expected value to match regex/{pattern}/ with {flags} flags",
     )
