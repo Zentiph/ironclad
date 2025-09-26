@@ -8,6 +8,7 @@ The predicate class.
 
 from __future__ import annotations
 
+from collections.abc import Sized
 from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar, overload
 
 if TYPE_CHECKING:
@@ -104,48 +105,18 @@ class Predicate(Generic[T]):
 
     # --- pretty strings ---
     @overload
-    def render_msg(self, x: T, /, *, max_chain: int = 6) -> str: ...
+    def render_msg(self, x: T, /) -> str: ...
     @overload
-    def render_msg(self, x: None = ..., /, *, max_chain: int = 6) -> str: ...
-    def render_msg(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
+    def render_msg(self, x: None = None, /) -> str: ...
+    def render_msg(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value.
 
         Args:
             x (T | None, optional): The value given to the predicate. Defaults to None.
-            max_chain (int, optional): The maximum number of chains to report.
-                Defaults to 6.
 
         Returns:
             str: The formatted message with the given test value.
         """
-        return self.__add_context_to_msg(
-            self.__render_msg_no_context(x), list(self.__context), max_chain=max_chain
-        )
-
-    @overload
-    def render_tree(self, x: T, /) -> str: ...
-    @overload
-    def render_tree(self, x: None = ..., /) -> str: ...
-    def render_tree(self, x: T | None = None, /) -> str:
-        """Render this predicate's message with a given input value as a tree.
-
-        Args:
-            x (T | None, optional): The value given to the predicate. Defaults to None.
-
-        Returns:
-            str: The formatted tree with the given test value.
-        """
-        lines: list[str] = [f"{self.__name}: {self.__render_msg_no_context(x)}"]
-        lines.extend(  # newest -> oldest top-down
-            [
-                # pylint:disable=protected-access
-                f"\tfrom {pred.__name}: {pred.__render_msg_no_context(x)}"
-                for pred in reversed(self.__context)
-            ]
-        )
-        return "\n".join(lines)
-
-    def __render_msg_no_context(self, x: T | None = None, /) -> str:
         m = self.__msg
         if callable(m):
             return m(x)
@@ -156,17 +127,52 @@ class Predicate(Generic[T]):
         except KeyError:  # safeguard for missing format
             return s
 
-    # pylint:disable=protected-access
-    def __add_context_to_msg(
-        self, msg: str, context: list[Predicate[Any]], /, *, max_chain: int = 6
-    ) -> str:
-        if not context:
+    @overload
+    def render_with_context(self, x: T, /, *, max_chain: int = 6) -> str: ...
+    @overload
+    def render_with_context(self, x: None = None, /, *, max_chain: int = 6) -> str: ...
+    def render_with_context(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
+        """Render this predicate's message with a given input value and context.
+
+        Args:
+            x (T | None, optional): The value given to the predicate. Defaults to None.
+            max_chain (int, optional): The maximum number of chains to report.
+                Defaults to 6.
+
+        Returns:
+            str: The formatted message with the given test value.
+        """
+        msg = self.render_msg(x)
+        if not self.__context:
             return msg
 
         chain = " -> ".join(
-            "'" + pred.__name + "'" for pred in (*context[-max_chain + 1 :], self)
+            "'" + pred.name + "'" for pred in (*self.__context[-max_chain + 1 :], self)
         )
         return f"{msg} [via {chain}]"
+
+    @overload
+    def render_tree(self, x: T, /) -> str: ...
+    @overload
+    def render_tree(self, x: None = None, /) -> str: ...
+    def render_tree(self, x: T | None = None, /) -> str:
+        """Render this predicate's message with a given input value as a tree.
+
+        Args:
+            x (T | None, optional): The value given to the predicate. Defaults to None.
+
+        Returns:
+            str: The formatted tree with the given test value.
+        """
+        lines: list[str] = [f"{self.__name}: {self.render_msg(x)}"]
+        lines.extend(  # newest -> oldest top-down
+            [
+                # pylint:disable=protected-access
+                f"\tfrom {pred.__name}: {pred.render_msg(x)}"
+                for pred in reversed(self.__context)
+            ]
+        )
+        return "\n".join(lines)
 
     def _set_context(self, context: tuple[Predicate[Any], ...]) -> None:
         self.__context = context
@@ -213,7 +219,7 @@ class Predicate(Generic[T]):
             Predicate[T]: The cloned predicate with the new name.
         """
         pred = Predicate(self.__func, name, self.__msg)
-        pred._set_context(self.__context)
+        pred._set_context(self.__context)  # pylint:disable=protected-access
         return pred
 
     @overload
@@ -230,11 +236,10 @@ class Predicate(Generic[T]):
             Predicate[T]: The cloned predicate with the new message.
         """
         pred = Predicate(self.__func, self.__name, msg)
-        pred._set_context(self.__context)
+        pred._set_context(self.__context)  # pylint:disable=protected-access
         return pred
 
     # --- combinators ---
-    # pylint: disable=protected-access
     def __and__(self, other: Predicate[T]) -> Predicate[T]:
         """Combine this predicate with another, merging their conditions with an 'AND'.
 
@@ -246,14 +251,12 @@ class Predicate(Generic[T]):
         """
         return Predicate(
             lambda x: self(x) and other(x),
-            self.__name + " & " + other.__name,
-            lambda x: f"({self.__render_msg_no_context(x)}) and "
-            f"({other.__render_msg_no_context(x)})",
+            self.__name + " & " + other.name,
+            lambda x: f"({self.render_msg(x)}) and ({other.render_msg(x)})",
         )
 
     __rand__ = __and__
 
-    # pylint: disable=protected-access
     def __or__(self, other: Predicate[T]) -> Predicate[T]:
         """Combine this predicate with another, merging their conditions with an 'OR'.
 
@@ -265,9 +268,8 @@ class Predicate(Generic[T]):
         """
         return Predicate(
             lambda x: self(x) or other(x),
-            self.__name + " | " + other.__name,
-            lambda x: f"({self.__render_msg_no_context(x)}) or "
-            f"({other.__render_msg_no_context(x)})",
+            self.__name + " | " + other.name,
+            lambda x: f"({self.render_msg(x)}) or ({other.render_msg(x)})",
         )
 
     __ror__ = __or__
@@ -281,7 +283,7 @@ class Predicate(Generic[T]):
         return Predicate(
             lambda x: not self(x),
             "~" + self.__name,
-            lambda x: f"not ({self.__render_msg_no_context(x)})",
+            lambda x: f"not ({self.render_msg(x)})",
         )
 
     negate = __invert__
@@ -341,7 +343,7 @@ class Predicate(Generic[T]):
             name = self.__name
 
         pred = Predicate(func, name, msg)
-        pred._set_context((*self.__context, self))
+        pred._set_context((*self.__context, self))  # pylint:disable=protected-access
         return pred
 
     def on(
@@ -349,7 +351,7 @@ class Predicate(Generic[T]):
         getter: Callable[[Obj], T],
         /,
     ) -> Predicate[Obj]:
-        """Modify this predicate to check if a property of an object validates it.
+        """Check if a property of an object validates it.
 
         Args:
             getter (Callable[[Obj], T]): function to access the property of an object.
@@ -360,81 +362,139 @@ class Predicate(Generic[T]):
         return Predicate(
             lambda o: self.__func(getter(o)),
             self.__name,
-            lambda o: self.__render_msg_no_context(
-                getter(o) if o is not None else None
-            ),
+            lambda o: self.render_msg(getter(o) if o is not None else None),
         )
 
-    # TODO: there's gotta be a better way to do this
+    def __msg_over_iter(
+        self, prefix: str, /
+    ) -> str | Callable[[Iterable[T] | None], str]:
+        if isinstance(self.__msg, str):
+            return self.__msg
+
+        def new_msg(it: Iterable[T] | None) -> str:
+            sample: T | None = None
+            if it is not None:
+                it_iter = iter(it)
+                sample = next(it_iter, None)
+            base = self.render_msg(sample)  # handle callable/format uniformly
+            return f"{prefix}{base}" if prefix else base
+
+        return new_msg
+
+    def quantify(
+        self,
+        quantifier: Callable[[Iterable[bool]], bool],
+        /,
+        label: str,
+        *,
+        prefix: str,
+    ) -> Predicate[Iterable[T]]:
+        """Build a predicate that approves an iterable via a boolean quantifier.
+
+        Args:
+            quantifier (Callable[[Iterable[bool]], bool]):
+                Function that takes an iterable of bools
+                and determines if it is approved.
+            label (str): A name label for the quantifier.
+            prefix (str): A prefix for the predicate's failure message.
+
+        Returns:
+            Predicate[Iterable[T]]: The quantified predicate.
+        """
+
+        def f(it: Iterable[T]) -> bool:
+            return quantifier(self.__func(x) for x in it)
+
+        return self.lift(f, f"{label}({self.__name})", self.__msg_over_iter(prefix))
+
     def all(self) -> Predicate[Iterable[T]]:
-        """Modify this predicate to check if every element in an iterable is accepted.
+        """Check if every element in an iterable is accepted.
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
         """
-
-        def f(it: Iterable[T]) -> bool:
-            return all(self.__func(x) for x in it)
-
-        name = f"all({self.__name})"
-        if isinstance(self.__msg, str):
-            return self.lift(f, name, self.__msg)
-
-        # get a representative from the iterable
-        def new_msg(it: Iterable[T] | None) -> str:
-            if it is None:
-                rep: T | None = None
-            else:
-                conv_it = iter(it)
-                rep = next(conv_it, None)
-            # redundant if callable check here, since we check if self.__msg
-            # is a str above, but mypy gets angry if we don't do this.
-            return (
-                f"for every element: {self.__msg(rep)}"
-                if callable(self.__msg)
-                else "predicate failed"
-            )
-
-        return self.lift(
-            f,
-            name,
-            new_msg,
-        )
+        return self.quantify(all, "all", prefix="for every element: ")
 
     def any(self) -> Predicate[Iterable[T]]:
-        """Modify this predicate to check if any element in an iterable is accepted.
+        """Check if any element in an iterable is accepted.
+
+        Returns:
+            Predicate[Iterable[T]]: The new predicate.
+        """
+        return self.quantify(any, "any", prefix="for at least one element: ")
+
+    def at_least(self, n: int) -> Predicate[Iterable[T]]:
+        """Check if at least n elements in an iterable are accepted.
+
+        Args:
+            n (int): The minimum number of elements that must be accepted.
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
         """
 
-        def f(it: Iterable[T]) -> bool:
-            return any(self.__func(x) for x in it)
+        def quantifier(bits: Iterable[bool]) -> bool:
+            size = None if not isinstance(bits, Sized) else len(bits)
+            if size is not None and size < n:
+                return False  # break if n is unreachable
 
-        name = f"any({self.__name})"
+            count = 0
+            for b in bits:
+                count += 1 if b else 0
+                if count >= n:
+                    return True
+            return False
 
-        if isinstance(self.__msg, str):
-            return self.lift(f, name, self.__msg)
+        return self.quantify(
+            quantifier, f"at least {n}", prefix=f"for at least {n} elements: "
+        )
 
-        # get a representative from the iterable
-        def new_msg(it: Iterable[T] | None) -> str:
-            if it is None:
-                rep: T | None = None
-            else:
-                conv_it = iter(it)
-                rep = next(conv_it, None)
-            # redundant if callable check here, since we check if self.__msg
-            # is a str above, but mypy gets angry if we don't do this.
-            return (
-                f"for at least one element: {self.__msg(rep)}"
-                if callable(self.__msg)
-                else "predicate failed"
-            )
+    def at_most(self, n: int) -> Predicate[Iterable[T]]:
+        """Check if at most n elements in an iterable are accepted.
 
-        return self.lift(
-            f,
-            name,
-            new_msg,
+        Args:
+            n (int): The maximum number of elements that must be accepted.
+
+        Returns:
+            Predicate[Iterable[T]]: The new predicate.
+        """
+
+        def quantifier(bits: Iterable[bool]) -> bool:
+            count = 0
+            for b in bits:
+                count += 1 if b else 0
+                if count >= n:
+                    return False
+            return True
+
+        return self.quantify(
+            quantifier, f"at most {n}", prefix=f"for at most {n} elements: "
+        )
+
+    def exactly(self, n: int) -> Predicate[Iterable[T]]:
+        """Check if exactly n elements in an iterable are accepted.
+
+        Args:
+            n (int): The exact number of elements that must be accepted.
+
+        Returns:
+            Predicate[Iterable[T]]: The new predicate.
+        """
+
+        def quantifier(bits: Iterable[bool]) -> bool:
+            size = None if not isinstance(bits, Sized) else len(bits)
+            if size is not None and size < n:
+                return False  # break if n is unreachable
+
+            count = 0
+            for b in bits:
+                count += 1 if b else 0
+                if count >= n:
+                    return False
+            return count == n
+
+        return self.quantify(
+            quantifier, f"at least {n}", prefix=f"for at least {n} elements: "
         )
 
     # --- safety / debugging ---
