@@ -1,5 +1,5 @@
 """
-Compiled predicates for value/type checks.
+Compile and cache predicates for value/type checks.
 
 :authors: Zentiph
 :copyright: (c) 2025-present Zentiph
@@ -16,7 +16,7 @@ from ..repr import type_repr
 from ..types import EnforceOptions
 from .predicate import Predicate
 
-__all__ = ["as_predicate", "matches_hint", "spec_contains_int"]
+__all__ = ["as_cached_predicate", "matches_hint", "spec_contains_int"]
 
 _CACHE_SIZE = 2048
 
@@ -179,7 +179,7 @@ def spec_contains_int(spec: Any) -> bool:
     return False
 
 
-def as_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
+def as_cached_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
     """Turn a typing spec or an existing Predicate into a Predicate with caching.
 
     Caching will not work if a type hint is not cachable.

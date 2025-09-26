@@ -8,8 +8,8 @@ Argument validation functions, including type and value enforcing.
 
 import functools
 import inspect
-import reprlib
 from collections.abc import Callable
+from reprlib import Repr
 from typing import (
     Any,
     ParamSpec,
@@ -17,7 +17,7 @@ from typing import (
     get_type_hints,
 )
 
-from .predicates import Predicate, as_predicate, matches_hint, spec_contains_int
+from .predicates import Predicate, as_cached_predicate, matches_hint, spec_contains_int
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 from .util import (
@@ -31,7 +31,7 @@ __all__ = ["coerce_types", "enforce_annotations", "enforce_types", "enforce_valu
 P = ParamSpec("P")
 T = TypeVar("T")
 
-_SHORT = reprlib.Repr()
+_SHORT = Repr()
 _SHORT.maxstring = 80
 _SHORT.maxother = 80
 
@@ -63,7 +63,7 @@ def enforce_types(
 
         # compile once
         validators: dict[str, Predicate[Any]] = {
-            name: as_predicate(spec, options) for name, spec in types.items()
+            name: as_cached_predicate(spec, options) for name, spec in types.items()
         }
 
         @functools.wraps(func)

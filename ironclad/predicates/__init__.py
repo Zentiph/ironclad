@@ -14,21 +14,18 @@ __all__ = [
     "NOT_NONE",
     "POSITIVE",
     "Predicate",
-    "as_predicate",
+    "as_cached_predicate",
     "between",
     "equals",
     "instance_of",
-    "items",
-    "keys",
     "length",
     "matches_hint",
     "one_of",
     "regex",
     "spec_contains_int",
-    "values",
 ]
 
-from .compile import as_predicate, matches_hint, spec_contains_int
+from .compile import as_cached_predicate, matches_hint, spec_contains_int
 from .predicate import Predicate
 from .predicates import (
     ALWAYS,
@@ -40,10 +37,7 @@ from .predicates import (
     between,
     equals,
     instance_of,
-    items,
-    keys,
     length,
     one_of,
     regex,
-    values,
 )
