@@ -234,9 +234,37 @@ def length(size: int, /) -> Predicate[Sized]:
             if the object's size matches the length.
     """
     return Predicate(
-        lambda s: hasattr(s, "__len__") and len(s) == size,
+        lambda s: len(s) == size,
         "length",
         lambda _: "expected sized object with length " + str(size),
+    )
+
+
+def length_between(
+    low: int, high: int, /, *, inclusive: bool = True
+) -> Predicate[Sized]:
+    """A predicate that checks if the size of a sized object is within a range of sizes.
+
+    Args:
+        low (int): The lower bound.
+        high (int): The upper bound.
+        inclusive (bool, optional): Whether the bounds are inclusive.
+            Defaults to True.
+
+    Returns:
+        Predicate[Sized]: A predicate that checks if the size of
+            a given sized object is in the valid range.
+    """
+    if inclusive:
+        return Predicate(
+            lambda i: low <= len(i) <= high,
+            "between",
+            lambda _: f"expected {low!r} <= len(it) <= {high!r}",
+        )
+    return Predicate(
+        lambda i: low < len(i) < high,
+        "between",
+        lambda _: f"expected {low!r} < len(it) < {high!r}",
     )
 
 
