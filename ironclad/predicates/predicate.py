@@ -305,10 +305,10 @@ class Predicate(Generic[T]):
     __ror__ = __or__
 
     def __invert__(self) -> Predicate[T]:
-        """Invert this predicate.
+        """Negate this predicate.
 
         Returns:
-            Predicate[T]: The inverted predicate.
+            Predicate[T]: The negated predicate.
         """
         return Predicate(
             lambda x: not self(x),
@@ -317,6 +317,21 @@ class Predicate(Generic[T]):
         )
 
     negate = __invert__
+
+    def __xor__(self, other: Predicate[T]) -> Predicate[T]:
+        """Combine this predicate with another, merging their conditions with an 'XOR'.
+
+        Args:
+            other (Predicate[T]): The other predicate.
+
+        Returns:
+            Predicate[T]: The combined predicate.
+        """
+        return (self | other) & ~(self & other)
+
+    __rxor__ = __xor__
+
+    xor = __xor__
 
     def implies(self, other: Predicate[T]) -> Predicate[T]:
         """A predicate which checks that this predicate implies another predicate.
