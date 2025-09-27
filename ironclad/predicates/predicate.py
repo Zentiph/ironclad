@@ -8,17 +8,19 @@ The predicate class.
 
 from __future__ import annotations
 
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar, overload
+from collections.abc import Callable, Sized
+from typing import TYPE_CHECKING, Any, Generic, Never, TypeAlias, TypeVar, overload
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
 
 __all__ = ["Predicate"]
 
 T = TypeVar("T")
 U = TypeVar("U")
 Obj = TypeVar("Obj", bound=object)
+
+ExceptionFactory: TypeAlias = Callable[[str, U, str], type[BaseException]]
 
 
 class Predicate(Generic[T]):
@@ -190,22 +192,50 @@ class Predicate(Generic[T]):
         """
         return None if self(x) else self.render_msg(x)
 
+    @overload
     def validate(
-        self, x: T, *, label: str = "value", exc: type[Exception] = ValueError
+        self, x: T, /, *, label: str = "value", exc: type[BaseException] = ValueError
+    ) -> T: ...
+    @overload
+    def validate(
+        self,
+        x: T,
+        /,
+        *,
+        label: str = "value",
+        exc: ExceptionFactory[T],
+    ) -> T: ...
+    def validate(
+        self,
+        x: T,
+        /,
+        *,
+        label: str = "value",
+        exc: type[BaseException] | ExceptionFactory[T] = ValueError,
     ) -> T:
         """Return x if ok, otherwise raise an error with useful context.
 
         Args:
             x (T): The value to test.
             label (str, optional): A label for the tested value. Defaults to "value".
-            exc (type[Exception], optional): The exception to raise on failure.
+            exc (type[BaseException] | ExceptionFactory[T], optional):
+                An exception or exception factory called on failure.
+                If a factory, it should take a label, the tested value,
+                and error message and return an exception to raise.
                 Defaults to ValueError.
 
+        Raises:
+            BaseException: If the validation fails, the exception returned
+            by exc_factory will be raised.
+
         Returns:
-            T: x if the predicate accepts it.
+            T: x, if the predicate accepts it.
         """
         if not self(x):
-            raise exc(f"{label}: {self.render_msg(x)} (got {x!r})")
+            message = f"{label}: {self.render_msg(x)} (got {x!r})"
+            if callable(exc):
+                raise exc(label, x, message)
+            raise exc(message)
         return x
 
     # --- ergonomics --- #
