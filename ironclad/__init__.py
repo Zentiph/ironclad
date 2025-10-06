@@ -16,6 +16,7 @@ __all__ = [
     "ClassInfo",
     "EnforceOptions",
     "Multimethod",
+    "class_info_to_str",
     "coerce_types",
     "enforce_annotations",
     "enforce_types",
@@ -47,7 +48,7 @@ from .arg_validation import (
 )
 from .multimethod import Multimethod, runtime_overload
 from .predicates import matches_hint
-from .repr import type_repr
+from .repr import class_info_to_str, type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
 _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]

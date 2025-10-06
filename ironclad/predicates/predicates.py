@@ -10,23 +10,16 @@ from __future__ import annotations
 
 import re
 from collections.abc import Hashable, Mapping
-from types import UnionType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Protocol,
-    Self,
-    TypeAlias,
-    TypeVar,
-    get_args,
-)
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar
+
+from ..repr import class_info_to_str
+from .predicate import Predicate
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sized
 
     from ..types import ClassInfo
 
-from .predicate import Predicate
 
 __all__ = [
     "ALWAYS",
@@ -59,39 +52,6 @@ K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
 
 AnyRealNumber: TypeAlias = int | float
-
-
-def _flatten_type(t: ClassInfo) -> list[type]:
-    stack = [t]
-    types: list[type] = []
-
-    while stack:
-        current = stack.pop()
-        if isinstance(current, UnionType):
-            stack.extend(get_args(current))
-        elif isinstance(current, tuple):
-            stack.extend(current)
-        else:
-            types.append(current)
-
-    types.reverse()  # preserve original left to right order
-
-    # dedupe
-    seen: set[type] = set()
-    out: list[type] = []
-    for tp in types:
-        if tp not in seen:
-            seen.add(tp)
-            out.append(tp)
-
-    return out
-
-
-# TODO: think about moving this to repr.py
-def _class_info_to_str(t: ClassInfo, /) -> str:
-    if isinstance(t, type):
-        return t.__name__
-    return " | ".join(tp.__name__ for tp in _flatten_type(t))
 
 
 ALWAYS: Predicate[Any] = Predicate(lambda _: True, "always", "always true")
@@ -149,7 +109,7 @@ def instance_of(t: ClassInfo) -> Predicate[object]:
     return Predicate(
         lambda x: isinstance(x, t),
         "instance of",
-        lambda _: f"expected instance of {_class_info_to_str(t)}",
+        lambda _: f"expected instance of {class_info_to_str(t)}",
     )
 
 

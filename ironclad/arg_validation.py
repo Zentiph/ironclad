@@ -171,7 +171,6 @@ def coerce_types(
     return decorator
 
 
-# TODO: see if this can typed so the predicates match the paramspec
 def enforce_values(
     **predicate_map: Predicate[Any],
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:

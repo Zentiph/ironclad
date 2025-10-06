@@ -8,6 +8,7 @@ Representation tools for types and other Python features.
 
 import types
 from collections.abc import Iterable, Mapping, Sequence
+from types import UnionType
 from typing import (
     Annotated,
     Any,
@@ -18,7 +19,9 @@ from typing import (
     get_origin,
 )
 
-__all__ = ["type_repr"]
+from .types import ClassInfo
+
+__all__ = ["class_info_to_str", "type_repr"]
 
 _UNION_TYPES = (Union, getattr(types, "UnionType", Union))  # pylint:disable=consider-alternative-union-syntax
 
@@ -63,6 +66,32 @@ def _flatten_union(union: Any) -> list[Any]:
             out.append(current)
 
     out.reverse()  # preserve original left to right order
+    return out
+
+
+def _flatten_type(t: ClassInfo) -> list[type]:
+    stack = [t]
+    types: list[type] = []
+
+    while stack:
+        current = stack.pop()
+        if isinstance(current, UnionType):
+            stack.extend(get_args(current))
+        elif isinstance(current, tuple):
+            stack.extend(current)
+        else:
+            types.append(current)
+
+    types.reverse()  # preserve original left to right order
+
+    # dedupe
+    seen: set[type] = set()
+    out: list[type] = []
+    for tp in types:
+        if tp not in seen:
+            seen.add(tp)
+            out.append(tp)
+
     return out
 
 
@@ -164,6 +193,20 @@ def _fallback_repr(hint: Any, /) -> str:
         return str(base)
 
     return ""
+
+
+def class_info_to_str(t: ClassInfo, /) -> str:
+    """Convert class info a readable string.
+
+    Args:
+        t (ClassInfo): The class info.
+
+    Returns:
+        str: The readable string.
+    """
+    if isinstance(t, type):
+        return t.__name__
+    return " | ".join(tp.__name__ for tp in _flatten_type(t))
 
 
 def type_repr(hint: Any, /) -> str:
