@@ -62,7 +62,7 @@ class Predicate(Generic[T]):
         self.__msg = msg if msg is not None else name
         # a stack containing other predicates that are context for this predicate
         # e.g. if a predicate, pred3, is lifted from pred2 which is lifted from pred1,
-        #      the context of pred3 is [pred1, pred2]
+        #      the context of pred3 is (pred1, pred2)
         self.__context: tuple[Predicate[Any], ...] = ()
 
     # --- core --- #
@@ -78,15 +78,6 @@ class Predicate(Generic[T]):
         return bool(self.__func(x))
 
     # --- props --- #
-    @property
-    def func(self) -> Callable[[T], bool]:
-        """Get the predicate function of this predicate object.
-
-        Returns:
-            Callable[[T], bool]: The predicate function.
-        """
-        return self.__func
-
     @property
     def name(self) -> str:
         """Get the name of this predicate.
@@ -176,7 +167,10 @@ class Predicate(Generic[T]):
         )
         return "\n".join(lines)
 
-    def _set_context(self, context: tuple[Predicate[Any], ...]) -> None:
+    def _get_context(self) -> tuple[Predicate[Any], ...]:
+        return self.__context
+
+    def _set_context(self, context: tuple[Predicate[Any], ...], /) -> None:
         self.__context = context
 
     # --- diagnostics --- #
@@ -446,11 +440,11 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Iterable[T]]: The quantified predicate.
         """
-
-        def f(it: Iterable[T]) -> bool:
-            return quantifier(self.__func(x) for x in it)
-
-        return self.lift(f, f"{label}({self.__name})", self.__msg_over_iter(prefix))
+        return self.lift(
+            lambda i: quantifier(self.__func(x) for x in i),
+            f"{label}({self.__name})",
+            self.__msg_over_iter(prefix),
+        )
 
     def all(self) -> Predicate[Iterable[T]]:
         """Check if every element in an iterable is accepted.

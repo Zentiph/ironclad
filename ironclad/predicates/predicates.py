@@ -9,8 +9,17 @@ Some pre-made predicate functions for ease of use.
 from __future__ import annotations
 
 import re
+from collections.abc import Hashable, Mapping
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar, get_args
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypeVar,
+    get_args,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sized
@@ -29,9 +38,11 @@ __all__ = [
     "between",
     "equals",
     "instance_of",
+    "keys",
     "length",
     "one_of",
     "regex",
+    "values",
 ]
 
 
@@ -44,6 +55,8 @@ class _Comparable(Protocol):
 
 C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
+K = TypeVar("K", bound=Hashable)
+V = TypeVar("V")
 
 AnyRealNumber: TypeAlias = int | float
 
@@ -275,6 +288,45 @@ NON_EMPTY = (
 )
 """A predicate that checks if the given value is sized and non empty.
 """
+
+
+# --- map predicates ---
+def keys(inner: Predicate[K]) -> Predicate[Mapping[K, Any]]:
+    """A predicate that checks if a mapping's keys match the given predicate.
+
+    Args:
+        inner (Predicate[K]): A predicate to validate each key.
+
+    Returns:
+        Predicate[Mapping[K, Any]]: A predicate that verifies
+            a map based on its keys.
+    """
+    key_pred = inner.quantify(all, "keys", prefix="for each key: ")
+
+    map_pred = Predicate[Mapping[K, Any]](
+        lambda m: key_pred(m.keys()), key_pred.name, key_pred.msg
+    )
+    map_pred._set_context((*key_pred._get_context(), map_pred))  # pyright:ignore[reportPrivateUsage]
+    return map_pred
+
+
+def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
+    """A predicate that checks if a mapping's values match the given predicate.
+
+    Args:
+        inner (Predicate[Any]): A predicate to validate each value.
+
+    Returns:
+        Predicate[Mapping[Hashable, Any]]: A predicate that verifies
+            a map based on its values.
+    """
+    value_pred = inner.quantify(all, "values", prefix="for each value: ")
+
+    map_pred = Predicate[Mapping[Hashable, Any]](
+        lambda m: value_pred(m.values()), value_pred.name, value_pred.msg
+    )
+    map_pred._set_context((*value_pred._get_context(), map_pred))  # pyright:ignore[reportPrivateUsage]
+    return map_pred
 
 
 # --- string predicates ---
