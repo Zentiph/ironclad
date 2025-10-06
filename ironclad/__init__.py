@@ -11,6 +11,8 @@ without repetitive `if ... raise` boilerplate.
 
 from __future__ import annotations
 
+from typing import Literal, NamedTuple, TypeAlias
+
 __all__ = [
     "DEFAULT_ENFORCE_OPTIONS",
     "ClassInfo",
@@ -37,7 +39,6 @@ __version__ = "0.1.0a"
 
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
-from typing import Literal, NamedTuple, TypeAlias
 
 from . import predicates
 from .arg_validation import (
@@ -56,13 +57,9 @@ _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 
 class _VersionInfo(NamedTuple):
     major: int
-    """The major version number."""
     minor: int
-    """The minor version number."""
     micro: int
-    """The micro version number."""
     releaselevel: _ReleaseLevel
-    """The release level."""
 
 
 def _parse_version(v: str) -> _VersionInfo:

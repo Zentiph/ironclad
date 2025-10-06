@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,18 +31,6 @@ class Multimethod:
 
     __slots__ = ("__name__", "_implementations", "options")
 
-    @overload
-    def __init__(
-        self,
-        func: Callable[..., Any],
-        /,
-        *,
-        options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
-    ) -> None: ...
-    @overload
-    def __init__(
-        self, func: None = None, /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
-    ) -> None: ...
     def __init__(
         self,
         func: Callable[..., Any] | None = None,
