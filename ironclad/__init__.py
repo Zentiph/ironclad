@@ -9,8 +9,6 @@ without repetitive `if ... raise` boilerplate.
 :license: MIT; see LICENSE.md for more details.
 """
 
-from __future__ import annotations
-
 from typing import Literal, NamedTuple, TypeAlias
 
 __all__ = [
