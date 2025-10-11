@@ -86,6 +86,12 @@ class Predicate(Generic[T]):
         name: str | None,
         msg: str | Callable[[U | None], str],
     ) -> Predicate[U]: ...
+    def clone(
+        self,
+        *,
+        name: str | None = None,
+        msg: str | Callable[[T | None], str] | None = None,
+    ) -> Predicate[T]: ...
     def on(
         self,
         getter: Callable[[Obj], T],

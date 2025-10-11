@@ -145,12 +145,6 @@ class Predicate(Generic[T]):
         )
         return "\n".join(lines)
 
-    def _get_context(self) -> tuple[Predicate[Any], ...]:
-        return self.__context
-
-    def _set_context(self, context: tuple[Predicate[Any], ...], /) -> None:
-        self.__context = context
-
     # --- diagnostics --- #
     def explain(self, x: T) -> str | None:
         """Explain this predicate's output for x.
@@ -207,9 +201,7 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[T]: The cloned predicate with the new name.
         """
-        pred = Predicate(self.__func, name, self.__msg)
-        pred._set_context(self.__context)  # pylint:disable=protected-access
-        return pred
+        return self.clone(name=name)
 
     def with_msg(self, msg: str | Callable[[T | None], str]) -> Predicate[T]:
         """Clone this predicate and give it a new message.
@@ -220,9 +212,7 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[T]: The cloned predicate with the new message.
         """
-        pred = Predicate(self.__func, self.__name, msg)
-        pred._set_context(self.__context)  # pylint:disable=protected-access
-        return pred
+        return self.clone(msg=msg)
 
     # --- combinators ---
     def __and__(self, other: Predicate[T]) -> Predicate[T]:
@@ -323,12 +313,31 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Any]: The lifted predicate.
         """
-        if name is None:
-            name = self.__name
+        return self.clone(name=name, msg=msg)
 
-        pred = Predicate(func, name, msg)
-        pred._set_context((*self.__context, self))  # pylint:disable=protected-access
-        return pred
+    def clone(
+        self,
+        *,
+        name: str | None = None,
+        msg: str | Callable[[T | None], str] | None = None,
+    ) -> Predicate[T]:
+        """Clone this predicate.
+
+        Args:
+            name (str | None, optional): The new predicate's name.
+                Copies the old one if None or "". Defaults to None.
+            msg (str | Callable[[Any | None], str], None, optional):
+                The new predicate's failure message.
+                Copies the old one if None. Defaults to None.
+
+        Returns:
+            Predicate[T]: The cloned predicate.
+        """
+        p = Predicate(
+            self.__func, name or self.__name, msg if msg is not None else self.__msg
+        )
+        p.__context = self.__context
+        return p
 
     def on(
         self,

@@ -261,13 +261,7 @@ def keys(inner: Predicate[K]) -> Predicate[Mapping[K, Any]]:
         Predicate[Mapping[K, Any]]: A predicate that verifies
             a map based on its keys.
     """
-    key_pred = inner.quantify(all, "keys", prefix="for each key: ")
-
-    map_pred = Predicate[Mapping[K, Any]](
-        lambda m: key_pred(m.keys()), key_pred.name, key_pred.msg
-    )
-    map_pred._set_context((*key_pred._get_context(), map_pred))
-    return map_pred
+    return inner.quantify(all, "keys", prefix="for each key: ").on(lambda m: m.keys())
 
 
 def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
@@ -280,13 +274,9 @@ def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
         Predicate[Mapping[Hashable, Any]]: A predicate that verifies
             a map based on its values.
     """
-    value_pred = inner.quantify(all, "values", prefix="for each value: ")
-
-    map_pred = Predicate[Mapping[Hashable, Any]](
-        lambda m: value_pred(m.values()), value_pred.name, value_pred.msg
+    return inner.quantify(all, "values", prefix="for each value: ").on(
+        lambda m: m.values()
     )
-    map_pred._set_context((*value_pred._get_context(), map_pred))
-    return map_pred
 
 
 # --- string predicates ---
