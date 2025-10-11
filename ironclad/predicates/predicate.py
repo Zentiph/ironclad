@@ -9,7 +9,7 @@ The predicate class.
 from __future__ import annotations
 
 from collections.abc import Callable, Sized
-from typing import TYPE_CHECKING, Any, Generic, Never, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -20,7 +20,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 Obj = TypeVar("Obj", bound=object)
 
-ExceptionFactory: TypeAlias = Callable[[str, U, str], type[BaseException]]
+ExceptionFactory = Callable[[str, U, str], type[BaseException]]
 
 
 class Predicate(Generic[T]):
@@ -32,16 +32,6 @@ class Predicate(Generic[T]):
 
     __slots__ = ("__context", "__func", "__msg", "__name")
 
-    @overload
-    def __init__(self, func: Callable[[T], bool], /, name: str, msg: str) -> None: ...
-    @overload
-    def __init__(
-        self, func: Callable[[T], bool], /, name: str, msg: Callable[[T | None], str]
-    ) -> None: ...
-    @overload
-    def __init__(
-        self, func: Callable[[T], bool], /, name: str, msg: None = None
-    ) -> None: ...
     def __init__(
         self,
         func: Callable[[T], bool],
@@ -97,10 +87,6 @@ class Predicate(Generic[T]):
         return self.__msg
 
     # --- pretty strings ---
-    @overload
-    def render_msg(self, x: T, /) -> str: ...
-    @overload
-    def render_msg(self, x: None = None, /) -> str: ...
     def render_msg(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value.
 
@@ -120,10 +106,6 @@ class Predicate(Generic[T]):
         except KeyError:  # safeguard for missing format
             return s
 
-    @overload
-    def render_with_context(self, x: T, /, *, max_chain: int = 6) -> str: ...
-    @overload
-    def render_with_context(self, x: None = None, /, *, max_chain: int = 6) -> str: ...
     def render_with_context(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
         """Render this predicate's message with a given input value and context.
 
@@ -144,10 +126,6 @@ class Predicate(Generic[T]):
         )
         return f"{msg} [via {chain}]"
 
-    @overload
-    def render_tree(self, x: T, /) -> str: ...
-    @overload
-    def render_tree(self, x: None = None, /) -> str: ...
     def render_tree(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value as a tree.
 
@@ -186,19 +164,6 @@ class Predicate(Generic[T]):
         """
         return None if self(x) else self.render_msg(x)
 
-    @overload
-    def validate(
-        self, x: T, /, *, label: str = "value", exc: type[BaseException] = ValueError
-    ) -> T: ...
-    @overload
-    def validate(
-        self,
-        x: T,
-        /,
-        *,
-        label: str = "value",
-        exc: ExceptionFactory[T],
-    ) -> T: ...
     def validate(
         self,
         x: T,
@@ -246,10 +211,6 @@ class Predicate(Generic[T]):
         pred._set_context(self.__context)  # pylint:disable=protected-access
         return pred
 
-    @overload
-    def with_msg(self, msg: str) -> Predicate[T]: ...
-    @overload
-    def with_msg(self, msg: Callable[[T | None], str]) -> Predicate[T]: ...
     def with_msg(self, msg: str | Callable[[T | None], str]) -> Predicate[T]:
         """Clone this predicate and give it a new message.
 
@@ -339,22 +300,6 @@ class Predicate(Generic[T]):
         return (~self) | other
 
     # --- lifters ---
-    @overload
-    def lift(
-        self,
-        func: Callable[[T], bool],
-        /,
-        name: str | None,
-        msg: str | Callable[[T | None], str],
-    ) -> Predicate[T]: ...
-    @overload
-    def lift(
-        self,
-        func: Callable[[U], bool],
-        /,
-        name: str | None,
-        msg: str | Callable[[U | None], str],
-    ) -> Predicate[U]: ...
     def lift(
         self,
         func: Callable[[Any], bool],

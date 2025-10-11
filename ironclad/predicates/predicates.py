@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Hashable, Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar
 
 from ..repr import class_info_to_str
 from .predicate import Predicate
@@ -51,11 +51,11 @@ T = TypeVar("T")
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
 
-AnyRealNumber: TypeAlias = int | float
+AnyRealNumber = int | float
 
 
-ALWAYS: Predicate[Any] = Predicate(lambda _: True, "always", "always true")
-NEVER: Predicate[Any] = Predicate(lambda _: False, "never", "always false")
+ALWAYS = Predicate[Any](lambda _: True, "always", "always true")
+NEVER = Predicate[Any](lambda _: False, "never", "always false")
 
 
 # --- simple predicates ---
@@ -266,7 +266,7 @@ def keys(inner: Predicate[K]) -> Predicate[Mapping[K, Any]]:
     map_pred = Predicate[Mapping[K, Any]](
         lambda m: key_pred(m.keys()), key_pred.name, key_pred.msg
     )
-    map_pred._set_context((*key_pred._get_context(), map_pred))  # pyright:ignore[reportPrivateUsage]
+    map_pred._set_context((*key_pred._get_context(), map_pred))
     return map_pred
 
 
@@ -285,7 +285,7 @@ def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
     map_pred = Predicate[Mapping[Hashable, Any]](
         lambda m: value_pred(m.values()), value_pred.name, value_pred.msg
     )
-    map_pred._set_context((*value_pred._get_context(), map_pred))  # pyright:ignore[reportPrivateUsage]
+    map_pred._set_context((*value_pred._get_context(), map_pred))
     return map_pred
 
 

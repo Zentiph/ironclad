@@ -1,12 +1,4 @@
-"""
-Tools for creating predicates for logic or validation.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
-
-__all__ = [
+__all__: list[str] = [
     "ALWAYS",
     "NEGATIVE",
     "NEVER",

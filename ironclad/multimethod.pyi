@@ -6,7 +6,7 @@ from typing import overload as typing_overload
 
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
-__all__: list[str]
+__all__: list[str] = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
 
 class InvalidOverloadError(TypeError): ...
 

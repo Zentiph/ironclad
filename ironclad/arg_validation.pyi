@@ -7,7 +7,12 @@ from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 P = ParamSpec("P")
 T = TypeVar("T")
 
-__all__: list[str]
+__all__: list[str] = [
+    "coerce_types",
+    "enforce_annotations",
+    "enforce_types",
+    "enforce_values",
+]
 
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,

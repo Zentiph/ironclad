@@ -21,7 +21,6 @@ __all__ = [
     "enforce_annotations",
     "enforce_types",
     "enforce_values",
-    "matches_hint",
     "predicates",
     "runtime_overload",
     "type_repr",
@@ -46,7 +45,6 @@ from .arg_validation import (
     enforce_values,
 )
 from .multimethod import Multimethod, runtime_overload
-from .predicates import matches_hint
 from .repr import class_info_to_str, type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
