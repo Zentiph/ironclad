@@ -8,17 +8,24 @@ Argument validation functions, including type and value enforcing.
 
 import functools
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Set as AbcSet
 from dataclasses import dataclass
 from reprlib import Repr
+from types import UnionType
 from typing import (
+    Annotated,
     Any,
+    Literal,
     ParamSpec,
     TypeVar,
+    Union,
+    get_args,
+    get_origin,
     get_type_hints,
 )
 
-from .predicates import Predicate, as_cached_predicate, matches_hint, spec_contains_int
+from .predicates import Predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
@@ -26,6 +33,8 @@ __all__ = ["coerce_types", "enforce_annotations", "enforce_types", "enforce_valu
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+_CACHE_SIZE = 2048
 
 _SHORT = Repr()
 _SHORT.maxstring = 80
@@ -168,6 +177,167 @@ def _to_call_args(
     return tuple(args_list), kwargs
 
 
+def _spec_contains_int(spec: Any) -> bool:
+    if spec is int:
+        return True
+
+    origin = get_origin(spec)
+    if origin in (Union, UnionType, tuple):
+        return any(_spec_contains_int(arg) for arg in get_args(spec))
+
+    return False
+
+
+def _matches_typevar(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
+    if isinstance(hint, TypeVar):
+        if hint.__constraints__:
+            return any(_matches_hint(x, ht, opts) for ht in hint.__constraints__)
+        if hint.__bound__:
+            return _matches_hint(x, hint.__bound__, opts)
+        return True
+
+    return False
+
+
+def _matches_typing_hint(
+    x: Any, hint: Any, origin: Any, opts: EnforceOptions, /
+) -> bool:
+    if origin is type:  # see if x is a subclass of the type inside type[T]
+        (t,) = get_args(hint) or (object,)
+        return isinstance(x, type) and (t is object or issubclass(x, t))
+
+    if origin is Annotated:  # check if the base type matches
+        base, *_ = get_args(hint)
+        return _matches_hint(x, base, opts)
+
+    if origin is Literal:  # see if x is a value in the literal
+        return x in set(get_args(hint))
+
+    if origin in (Union, UnionType):
+        return any(_matches_hint(x, ht, opts) for ht in get_args(hint))
+
+    return _matches_typevar(x, hint, opts)
+
+
+def _matches_collection_hint(
+    x: Any, hint: Any, origin: Any, opts: EnforceOptions, /
+) -> bool:
+    if origin is tuple:
+        args: tuple[Any, ...] = get_args(hint)
+
+        if len(args) == 2 and args[1] is ...:  # any size tuple (tuple[T, ...])
+            return isinstance(
+                x, tuple
+            ) and all(  # make sure all items inside the tuple match the type
+                _matches_hint(elem, args[0], opts) for elem in x
+            )
+
+        return (
+            isinstance(x, tuple)
+            and len(x) == len(args)
+            and all(  # make sure all items inside the tuple match the type
+                _matches_hint(elem, ht, opts) for elem, ht in zip(x, args, strict=False)
+            )
+        )
+
+    if origin in (list, set, frozenset, Sequence, AbcSet, MutableSequence):
+        elem = (get_args(hint) or (Any,))[0]
+        return isinstance(x, origin) and all(_matches_hint(e, elem, opts) for e in x)
+
+    if origin in (dict, Mapping):
+        if not isinstance(x, Mapping):
+            return False
+
+        k_hint, v_hint = get_args(hint) or (Any, Any)
+
+        return all(
+            _matches_hint(k, k_hint, opts) and _matches_hint(v, v_hint, opts)
+            for k, v in x.items()
+        )
+
+    return False
+
+
+def _matches_normal(x: Any, hint: Any, origin: Any, opts: EnforceOptions, /) -> bool:
+    try:  # normal classes/ABCs, @runtime_checkable Protocols
+        if isinstance(hint, type):
+            if not opts.allow_subclasses:
+                return type(x) is hint  # pylint:disable=unidiomatic-typecheck
+            # separate case for restriction on bools as ints
+            if opts.strict_bools and hint is int:
+                return type(x) is int  # pylint:disable=unidiomatic-typecheck
+
+        return isinstance(x, hint)
+    except TypeError:
+        # fallback for typing objects on older Python versions
+        return origin is not None and _matches_hint(x, origin, opts)
+
+
+@functools.lru_cache(maxsize=_CACHE_SIZE)
+def _hint_pred_cached(
+    hint: Any, /, *, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
+) -> Predicate[Any]:
+    # cached wrapper around _matches_hint for hashable hints
+    opts = EnforceOptions(
+        allow_subclasses=allow_subclasses,
+        check_defaults=check_defaults,
+        strict_bools=strict_bools,
+    )
+    return Predicate(lambda x: _matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
+
+
+def _hint_pred_uncached(
+    hint: Any, /, *, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
+) -> Predicate[Any]:
+    # cached wrapper around _matches_hint for hashable hints
+    opts = EnforceOptions(
+        allow_subclasses=allow_subclasses,
+        check_defaults=check_defaults,
+        strict_bools=strict_bools,
+    )
+    # fallback if hint is unhashable
+    return Predicate(lambda x: _matches_hint(x, hint, opts), f"'{type_repr(hint)}'")
+
+
+def _matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
+    if hint is Any:  # can be anything
+        return True
+
+    if hint is None or hint is type(None):  # hint is None, so x must be
+        return x is None
+
+    origin = get_origin(hint)
+
+    if _matches_collection_hint(x, hint, origin, opts):
+        return True
+
+    if _matches_typing_hint(x, hint, origin, opts):
+        return True
+
+    return _matches_normal(x, hint, origin, opts)
+
+
+def _as_cached_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
+    if isinstance(spec, Predicate):
+        return spec
+    try:
+        # try to hash
+        return _hint_pred_cached(
+            spec,
+            allow_subclasses=options.allow_subclasses,
+            check_defaults=options.check_defaults,
+            strict_bools=options.strict_bools,
+        )
+    except TypeError:
+        # unhashable, don't cache
+        return _hint_pred_uncached(
+            spec,
+            allow_subclasses=options.allow_subclasses,
+            check_defaults=options.check_defaults,
+            strict_bools=options.strict_bools,
+        )
+
+
 def enforce_types(
     options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     /,
@@ -195,7 +365,7 @@ def enforce_types(
 
         # compile once
         validators: dict[str, Predicate[Any]] = {
-            name: as_cached_predicate(spec, options) for name, spec in types.items()
+            name: _as_cached_predicate(spec, options) for name, spec in types.items()
         }
 
         @functools.wraps(func)
@@ -212,7 +382,7 @@ def enforce_types(
                         conditions += "no subclasses"
                     if options.strict_bools and any(
                         # only add bool info if there's an int in the types
-                        spec_contains_int(v)
+                        _spec_contains_int(v)
                         for v in types.values()
                     ):
                         if not options.allow_subclasses:
@@ -256,7 +426,7 @@ def enforce_annotations(
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             out = wrapped(*args, **kwargs)
 
-            if not matches_hint(out, hints["return"], DEFAULT_ENFORCE_OPTIONS):
+            if not _matches_hint(out, hints["return"], DEFAULT_ENFORCE_OPTIONS):
                 raise TypeError(
                     f"{func.__qualname__}(): return expected "
                     f"{type_repr(hints['return'])}, got {type_repr(type(out))}"
