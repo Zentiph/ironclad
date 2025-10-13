@@ -1,5 +1,0 @@
-* look thru old repos (like devgizmos) and see if anything could be useful in here
-* improve error messages for certain predicates
-   * Include the achieved count in the message (“expected at least 2, found 1”).
-   * Optionally include a tiny sample of offending indices/keys (bounded to 1–3) so users see where it failed without scanning everything.
-   * Maintain the context chain so the message shows which inner predicate was being counted.

@@ -9,18 +9,18 @@ without repetitive `if ... raise` boilerplate.
 :license: MIT; see LICENSE.md for more details.
 """
 
-from __future__ import annotations
+from typing import Literal, NamedTuple, TypeAlias
 
 __all__ = [
     "DEFAULT_ENFORCE_OPTIONS",
     "ClassInfo",
     "EnforceOptions",
     "Multimethod",
+    "class_info_to_str",
     "coerce_types",
     "enforce_annotations",
     "enforce_types",
     "enforce_values",
-    "matches_hint",
     "predicates",
     "runtime_overload",
     "type_repr",
@@ -36,7 +36,6 @@ __version__ = "0.1.0a"
 
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
-from typing import Literal, NamedTuple, TypeAlias
 
 from . import predicates
 from .arg_validation import (
@@ -46,8 +45,7 @@ from .arg_validation import (
     enforce_values,
 )
 from .multimethod import Multimethod, runtime_overload
-from .predicates import matches_hint
-from .repr import type_repr
+from .repr import class_info_to_str, type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
 _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
@@ -55,13 +53,9 @@ _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 
 class _VersionInfo(NamedTuple):
     major: int
-    """The major version number."""
     minor: int
-    """The minor version number."""
     micro: int
-    """The micro version number."""
     releaselevel: _ReleaseLevel
-    """The release level."""
 
 
 def _parse_version(v: str) -> _VersionInfo:

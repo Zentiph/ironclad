@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import functools
 import inspect
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from .predicates import as_predicate
+from .predicates import as_cached_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
@@ -31,18 +31,6 @@ class Multimethod:
 
     __slots__ = ("__name__", "_implementations", "options")
 
-    @overload
-    def __init__(
-        self,
-        func: Callable[..., Any],
-        /,
-        *,
-        options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
-    ) -> None: ...
-    @overload
-    def __init__(
-        self, func: None = None, /, *, options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS
-    ) -> None: ...
     def __init__(
         self,
         func: Callable[..., Any] | None = None,
@@ -93,7 +81,7 @@ class Multimethod:
             )
 
             norm_annotation[name] = annotation
-            validators[name] = as_predicate(annotation, self.options)
+            validators[name] = as_cached_predicate(annotation, self.options)
 
         self._implementations.append((sig, validators, func, norm_annotation))
         return self

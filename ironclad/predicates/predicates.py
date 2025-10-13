@@ -9,15 +9,17 @@ Some pre-made predicate functions for ease of use.
 from __future__ import annotations
 
 import re
-from types import UnionType
-from typing import TYPE_CHECKING, Any, Protocol, Self, TypeAlias, TypeVar, get_args
+from collections.abc import Hashable, Mapping
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar
+
+from ..repr import class_info_to_str
+from .predicate import Predicate
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sized
 
     from ..types import ClassInfo
 
-from .predicate import Predicate
 
 __all__ = [
     "ALWAYS",
@@ -29,9 +31,11 @@ __all__ = [
     "between",
     "equals",
     "instance_of",
+    "keys",
     "length",
     "one_of",
     "regex",
+    "values",
 ]
 
 
@@ -44,45 +48,14 @@ class _Comparable(Protocol):
 
 C = TypeVar("C", bound=_Comparable)
 T = TypeVar("T")
+K = TypeVar("K", bound=Hashable)
+V = TypeVar("V")
 
-AnyRealNumber: TypeAlias = int | float
-
-
-def _flatten_type(t: ClassInfo) -> list[type]:
-    stack = [t]
-    types: list[type] = []
-
-    while stack:
-        current = stack.pop()
-        if isinstance(current, UnionType):
-            stack.extend(get_args(current))
-        elif isinstance(current, tuple):
-            stack.extend(current)
-        else:
-            types.append(current)
-
-    types.reverse()  # preserve original left to right order
-
-    # dedupe
-    seen: set[type] = set()
-    out: list[type] = []
-    for tp in types:
-        if tp not in seen:
-            seen.add(tp)
-            out.append(tp)
-
-    return out
+AnyRealNumber = int | float
 
 
-# TODO: think about moving this to repr.py
-def _class_info_to_str(t: ClassInfo, /) -> str:
-    if isinstance(t, type):
-        return t.__name__
-    return " | ".join(tp.__name__ for tp in _flatten_type(t))
-
-
-ALWAYS: Predicate[Any] = Predicate(lambda _: True, "always", "always true")
-NEVER: Predicate[Any] = Predicate(lambda _: False, "never", "always false")
+ALWAYS = Predicate[Any](lambda _: True, "always", "always true")
+NEVER = Predicate[Any](lambda _: False, "never", "always false")
 
 
 # --- simple predicates ---
@@ -136,7 +109,7 @@ def instance_of(t: ClassInfo) -> Predicate[object]:
     return Predicate(
         lambda x: isinstance(x, t),
         "instance of",
-        lambda _: f"expected instance of {_class_info_to_str(t)}",
+        lambda _: f"expected instance of {class_info_to_str(t)}",
     )
 
 
@@ -234,9 +207,37 @@ def length(size: int, /) -> Predicate[Sized]:
             if the object's size matches the length.
     """
     return Predicate(
-        lambda s: hasattr(s, "__len__") and len(s) == size,
+        lambda s: len(s) == size,
         "length",
         lambda _: "expected sized object with length " + str(size),
+    )
+
+
+def length_between(
+    low: int, high: int, /, *, inclusive: bool = True
+) -> Predicate[Sized]:
+    """A predicate that checks if the size of a sized object is within a range of sizes.
+
+    Args:
+        low (int): The lower bound.
+        high (int): The upper bound.
+        inclusive (bool, optional): Whether the bounds are inclusive.
+            Defaults to True.
+
+    Returns:
+        Predicate[Sized]: A predicate that checks if the size of
+            a given sized object is in the valid range.
+    """
+    if inclusive:
+        return Predicate(
+            lambda i: low <= len(i) <= high,
+            "between",
+            lambda _: f"expected {low!r} <= len(it) <= {high!r}",
+        )
+    return Predicate(
+        lambda i: low < len(i) < high,
+        "between",
+        lambda _: f"expected {low!r} < len(it) < {high!r}",
     )
 
 
@@ -247,6 +248,35 @@ NON_EMPTY = (
 )
 """A predicate that checks if the given value is sized and non empty.
 """
+
+
+# --- map predicates ---
+def keys(inner: Predicate[K]) -> Predicate[Mapping[K, Any]]:
+    """A predicate that checks if a mapping's keys match the given predicate.
+
+    Args:
+        inner (Predicate[K]): A predicate to validate each key.
+
+    Returns:
+        Predicate[Mapping[K, Any]]: A predicate that verifies
+            a map based on its keys.
+    """
+    return inner.quantify(all, "keys", prefix="for each key: ").on(lambda m: m.keys())
+
+
+def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
+    """A predicate that checks if a mapping's values match the given predicate.
+
+    Args:
+        inner (Predicate[Any]): A predicate to validate each value.
+
+    Returns:
+        Predicate[Mapping[Hashable, Any]]: A predicate that verifies
+            a map based on its values.
+    """
+    return inner.quantify(all, "values", prefix="for each value: ").on(
+        lambda m: m.values()
+    )
 
 
 # --- string predicates ---

@@ -8,17 +8,19 @@ The predicate class.
 
 from __future__ import annotations
 
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar, overload
+from collections.abc import Callable, Sized
+from typing import TYPE_CHECKING, Any, Generic, Never, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
 
 __all__ = ["Predicate"]
 
 T = TypeVar("T")
 U = TypeVar("U")
 Obj = TypeVar("Obj", bound=object)
+
+ExceptionFactory = Callable[[str, U, str], type[BaseException]]
 
 
 class Predicate(Generic[T]):
@@ -30,16 +32,6 @@ class Predicate(Generic[T]):
 
     __slots__ = ("__context", "__func", "__msg", "__name")
 
-    @overload
-    def __init__(self, func: Callable[[T], bool], /, name: str, msg: str) -> None: ...
-    @overload
-    def __init__(
-        self, func: Callable[[T], bool], /, name: str, msg: Callable[[T | None], str]
-    ) -> None: ...
-    @overload
-    def __init__(
-        self, func: Callable[[T], bool], /, name: str, msg: None = None
-    ) -> None: ...
     def __init__(
         self,
         func: Callable[[T], bool],
@@ -60,7 +52,7 @@ class Predicate(Generic[T]):
         self.__msg = msg if msg is not None else name
         # a stack containing other predicates that are context for this predicate
         # e.g. if a predicate, pred3, is lifted from pred2 which is lifted from pred1,
-        #      the context of pred3 is [pred1, pred2]
+        #      the context of pred3 is (pred1, pred2)
         self.__context: tuple[Predicate[Any], ...] = ()
 
     # --- core --- #
@@ -76,15 +68,6 @@ class Predicate(Generic[T]):
         return bool(self.__func(x))
 
     # --- props --- #
-    @property
-    def func(self) -> Callable[[T], bool]:
-        """Get the predicate function of this predicate object.
-
-        Returns:
-            Callable[[T], bool]: The predicate function.
-        """
-        return self.__func
-
     @property
     def name(self) -> str:
         """Get the name of this predicate.
@@ -104,10 +87,6 @@ class Predicate(Generic[T]):
         return self.__msg
 
     # --- pretty strings ---
-    @overload
-    def render_msg(self, x: T, /) -> str: ...
-    @overload
-    def render_msg(self, x: None = None, /) -> str: ...
     def render_msg(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value.
 
@@ -127,10 +106,6 @@ class Predicate(Generic[T]):
         except KeyError:  # safeguard for missing format
             return s
 
-    @overload
-    def render_with_context(self, x: T, /, *, max_chain: int = 6) -> str: ...
-    @overload
-    def render_with_context(self, x: None = None, /, *, max_chain: int = 6) -> str: ...
     def render_with_context(self, x: T | None = None, /, *, max_chain: int = 6) -> str:
         """Render this predicate's message with a given input value and context.
 
@@ -151,10 +126,6 @@ class Predicate(Generic[T]):
         )
         return f"{msg} [via {chain}]"
 
-    @overload
-    def render_tree(self, x: T, /) -> str: ...
-    @overload
-    def render_tree(self, x: None = None, /) -> str: ...
     def render_tree(self, x: T | None = None, /) -> str:
         """Render this predicate's message with a given input value as a tree.
 
@@ -174,9 +145,6 @@ class Predicate(Generic[T]):
         )
         return "\n".join(lines)
 
-    def _set_context(self, context: tuple[Predicate[Any], ...]) -> None:
-        self.__context = context
-
     # --- diagnostics --- #
     def explain(self, x: T) -> str | None:
         """Explain this predicate's output for x.
@@ -191,21 +159,36 @@ class Predicate(Generic[T]):
         return None if self(x) else self.render_msg(x)
 
     def validate(
-        self, x: T, *, label: str = "value", exc: type[Exception] = ValueError
+        self,
+        x: T,
+        /,
+        *,
+        label: str = "value",
+        exc: type[BaseException] | ExceptionFactory[T] = ValueError,
     ) -> T:
         """Return x if ok, otherwise raise an error with useful context.
 
         Args:
             x (T): The value to test.
             label (str, optional): A label for the tested value. Defaults to "value".
-            exc (type[Exception], optional): The exception to raise on failure.
+            exc (type[BaseException] | ExceptionFactory[T], optional):
+                An exception or exception factory called on failure.
+                If a factory, it should take a label, the tested value,
+                and error message and return an exception to raise.
                 Defaults to ValueError.
 
+        Raises:
+            BaseException: If the validation fails, the exception returned
+            by exc_factory will be raised.
+
         Returns:
-            T: x if the predicate accepts it.
+            T: x, if the predicate accepts it.
         """
         if not self(x):
-            raise exc(f"{label}: {self.render_msg(x)} (got {x!r})")
+            message = f"{label}: {self.render_msg(x)} (got {x!r})"
+            if callable(exc):
+                raise exc(label, x, message)
+            raise exc(message)
         return x
 
     # --- ergonomics --- #
@@ -218,14 +201,8 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[T]: The cloned predicate with the new name.
         """
-        pred = Predicate(self.__func, name, self.__msg)
-        pred._set_context(self.__context)  # pylint:disable=protected-access
-        return pred
+        return self.clone(name=name)
 
-    @overload
-    def with_msg(self, msg: str) -> Predicate[T]: ...
-    @overload
-    def with_msg(self, msg: Callable[[T | None], str]) -> Predicate[T]: ...
     def with_msg(self, msg: str | Callable[[T | None], str]) -> Predicate[T]:
         """Clone this predicate and give it a new message.
 
@@ -235,9 +212,7 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[T]: The cloned predicate with the new message.
         """
-        pred = Predicate(self.__func, self.__name, msg)
-        pred._set_context(self.__context)  # pylint:disable=protected-access
-        return pred
+        return self.clone(msg=msg)
 
     # --- combinators ---
     def __and__(self, other: Predicate[T]) -> Predicate[T]:
@@ -275,10 +250,10 @@ class Predicate(Generic[T]):
     __ror__ = __or__
 
     def __invert__(self) -> Predicate[T]:
-        """Invert this predicate.
+        """Negate this predicate.
 
         Returns:
-            Predicate[T]: The inverted predicate.
+            Predicate[T]: The negated predicate.
         """
         return Predicate(
             lambda x: not self(x),
@@ -287,6 +262,21 @@ class Predicate(Generic[T]):
         )
 
     negate = __invert__
+
+    def __xor__(self, other: Predicate[T]) -> Predicate[T]:
+        """Combine this predicate with another, merging their conditions with an 'XOR'.
+
+        Args:
+            other (Predicate[T]): The other predicate.
+
+        Returns:
+            Predicate[T]: The combined predicate.
+        """
+        return (self | other) & ~(self & other)
+
+    __rxor__ = __xor__
+
+    xor = __xor__
 
     def implies(self, other: Predicate[T]) -> Predicate[T]:
         """A predicate which checks that this predicate implies another predicate.
@@ -300,22 +290,6 @@ class Predicate(Generic[T]):
         return (~self) | other
 
     # --- lifters ---
-    @overload
-    def lift(
-        self,
-        func: Callable[[T], bool],
-        /,
-        name: str | None,
-        msg: str | Callable[[T | None], str],
-    ) -> Predicate[T]: ...
-    @overload
-    def lift(
-        self,
-        func: Callable[[U], bool],
-        /,
-        name: str | None,
-        msg: str | Callable[[U | None], str],
-    ) -> Predicate[U]: ...
     def lift(
         self,
         func: Callable[[Any], bool],
@@ -339,12 +313,31 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Any]: The lifted predicate.
         """
-        if name is None:
-            name = self.__name
+        return self.clone(name=name, msg=msg)
 
-        pred = Predicate(func, name, msg)
-        pred._set_context((*self.__context, self))  # pylint:disable=protected-access
-        return pred
+    def clone(
+        self,
+        *,
+        name: str | None = None,
+        msg: str | Callable[[T | None], str] | None = None,
+    ) -> Predicate[T]:
+        """Clone this predicate.
+
+        Args:
+            name (str | None, optional): The new predicate's name.
+                Copies the old one if None or "". Defaults to None.
+            msg (str | Callable[[Any | None], str], None, optional):
+                The new predicate's failure message.
+                Copies the old one if None. Defaults to None.
+
+        Returns:
+            Predicate[T]: The cloned predicate.
+        """
+        p = Predicate(
+            self.__func, name or self.__name, msg if msg is not None else self.__msg
+        )
+        p.__context = self.__context
+        return p
 
     def on(
         self,
@@ -401,11 +394,11 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Iterable[T]]: The quantified predicate.
         """
-
-        def f(it: Iterable[T]) -> bool:
-            return quantifier(self.__func(x) for x in it)
-
-        return self.lift(f, f"{label}({self.__name})", self.__msg_over_iter(prefix))
+        return self.lift(
+            lambda i: quantifier(self.__func(x) for x in i),
+            f"{label}({self.__name})",
+            self.__msg_over_iter(prefix),
+        )
 
     def all(self) -> Predicate[Iterable[T]]:
         """Check if every element in an iterable is accepted.
