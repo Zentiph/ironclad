@@ -32,5 +32,4 @@ DEFAULT_ENFORCE_OPTIONS: EnforceOptions = EnforceOptions()
 """
 
 ClassInfo: TypeAlias = type | UnionType | tuple["ClassInfo", ...]
-"""A type alias to match Python's _ClassInfo used for isinstance() arguments.
-"""
+"""A type alias to match Python's _ClassInfo used for isinstance() arguments."""

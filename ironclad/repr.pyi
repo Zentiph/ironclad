@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, Final
 
 from .types import ClassInfo
 
-__all__: list[str] = ["class_info_to_str", "type_repr"]
+__all__: Final[list[str]]
 
 def class_info_to_str(t: ClassInfo, /) -> str: ...
 def type_repr(hint: Any, /) -> str: ...

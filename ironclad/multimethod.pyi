@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Final
 from typing import overload as typing_overload
 
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
-__all__: list[str] = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
+__all__: Final[list[str]]
 
 class InvalidOverloadError(TypeError): ...
 

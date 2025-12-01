@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from .predicates import as_cached_predicate
+from ._utils import as_cached_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 

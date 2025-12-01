@@ -1,7 +1,7 @@
 from types import UnionType
 from typing import Final, TypeAlias
 
-__all__: list[str] = ["DEFAULT_ENFORCE_OPTIONS", "ClassInfo", "EnforceOptions"]
+__all__: Final[list[str]]
 
 class EnforceOptions:
     def __init__(
