@@ -302,7 +302,6 @@ class Predicate(Generic[T]):
         This is the ideal way to create a predicate based on another one, because
         this method adds the previous predicate to the new predicate's failure context.
 
-
         Args:
             func (Callable[[Any], bool]): The new predicate function.
             name (str | None): The new predicate's name.
@@ -313,7 +312,9 @@ class Predicate(Generic[T]):
         Returns:
             Predicate[Any]: The lifted predicate.
         """
-        return self.clone(name=name, msg=msg)
+        pred = self.clone(name=name, msg=msg)
+        pred.__func = func
+        return pred
 
     def clone(
         self,

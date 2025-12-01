@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import Generic, Never, TypeAlias, TypeVar, overload
 
-__all__: list[str] = ["Predicate"]
+__all__: list[str]
 
 T = TypeVar("T")
 U = TypeVar("U")
