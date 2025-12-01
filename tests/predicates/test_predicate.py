@@ -1,7 +1,5 @@
 """Tests for the predicate class."""
 
-# ruff: noqa: S101
-
 import pytest
 
 from ironclad.predicates import Predicate
