@@ -6,7 +6,7 @@ from typing import Any, Final, Protocol, Self, TypeAlias, TypeVar
 from ..types import ClassInfo
 from .predicate import Predicate
 
-__all__: list[str]
+__all__: Final[list[str]]
 
 class _Comparable(Protocol):
     def __lt__(self, other: Self, /) -> bool: ...

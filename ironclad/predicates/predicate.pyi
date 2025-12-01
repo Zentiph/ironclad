@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from typing import Generic, Never, TypeAlias, TypeVar, overload
+from typing import Final, Generic, Never, TypeAlias, TypeVar, overload
 
-__all__: list[str]
+__all__: Final[list[str]]
 
 T = TypeVar("T")
 U = TypeVar("U")
