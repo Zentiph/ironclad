@@ -1,14 +1,12 @@
-# pylint:disable=all
-
 from typing import Final, Literal, NamedTuple, TypeAlias
 
 __all__: Final[list[str]]
 
-__title__: str
-__author__: str
-__license__: str
-__copyright__: str
-__version__: str
+__title__: Final[str]
+__author__: Final[str]
+__license__: Final[str]
+__copyright__: Final[str]
+__version__: Final[str]
 
 from . import predicates as predicates
 from .arg_validation import (
