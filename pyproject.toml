@@ -2,46 +2,47 @@
 target-version = "py311"
 line-length = 88
 
-[tool.ruff.lint]
 # Very strict, but with a few sensible ignores below.
 select = [
-  "F","E","W",         # pyflakes/pycodestyle
-  "I",                 # isort (imports)
-  "N",                 # pep8-naming
-  "UP",                # pyupgrade
-  "B",                 # bugbear
-  "A",                 # builtins (no shadowing)
-  "C4",                # comprehensions
-  "T20",               # no print()
-  "RET",               # return rules
-  "SIM",               # simplify
-  "PTH",               # prefer pathlib
-  "ERA",               # eradicate commented-out code
-  "PL",                # some pylint-like checks (non-overlapping)
-  "RUF",               # ruff rules
-  "ANN",               # type annotation coverage
-  "FBT",               # boolean-arg trap
-  "PIE",               # misc improvements
-  "PERF",              # performance
-  "S",                 # security (flake8-bandit subset)
-  "DTZ",               # timezone-aware datetimes
-  "TCH",               # type-checking-only imports
-  "D",                 # pydocstyle
-  "ISC",               # implicit string concat
-  "Q"                  # quotes consistency
+  "F",
+  "E",
+  "W",    # pyflakes/pycodestyle
+  "I",    # isort (imports)
+  "N",    # pep8-naming
+  "UP",   # pyupgrade
+  "B",    # bugbear
+  "A",    # builtins (no shadowing)
+  "C4",   # comprehensions
+  "T20",  # no print()
+  "RET",  # return rules
+  "SIM",  # simplify
+  "PTH",  # prefer pathlib
+  "ERA",  # eradicate commented-out code
+  "PL",   # some pylint-like checks (non-overlapping)
+  "RUF",  # ruff rules
+  "ANN",  # type annotation coverage
+  "FBT",  # boolean-arg trap
+  "PIE",  # misc improvements
+  "PERF", # performance
+  "S",    # security (flake8-bandit subset)
+  "DTZ",  # timezone-aware datetimes
+  "TC",   # type-checking-only imports
+  "D",    # pydocstyle
+  "ISC",  # implicit string concat
+  "Q",    # quotes consistency
 ]
 ignore = [
-  "D203","D212",       # prefer 'no-blank-line-before-class' and one style of summary lines
-  "ANN101","ANN102",   # allow missing 'self/cls' annotations
-  "ANN401",            # allow typing.Any in some APIs
-  "PLR2004"            # magic-numbers: allow (Pylint handles design limits)
+  "D203",
+  "D212",    # prefer 'no-blank-line-before-class' and one style of summary lines
+  "ANN401",  # allow typing.Any in some APIs
+  "PLR2004", # magic-numbers: allow (Pylint handles design limits)
 ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101","D","ANN","T20","PLR0913"]
+"tests/**" = ["S101", "D", "ANN", "T20", "PLR0913"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -61,7 +62,7 @@ disallow_untyped_defs = true
 show_error_codes = true
 pretty = true
 
-# So tests don’t get in your way:
+# So tests don’t get in the way:
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_errors = false
