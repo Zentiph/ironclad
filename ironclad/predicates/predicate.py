@@ -147,8 +147,7 @@ class Predicate(Generic[T]):
         lines: list[str] = [f"{self.__name}: {self.render_msg(x)}"]
         lines.extend(  # newest -> oldest top-down
             [
-                # pylint:disable=protected-access
-                f"\tfrom {pred.__name}: {pred.render_msg(x)}"
+                f"\tfrom {pred.name}: {pred.render_msg(x)}"
                 for pred in reversed(self.__context)
             ]
         )
