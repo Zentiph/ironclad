@@ -515,7 +515,7 @@ class Predicate(Generic[T]):
             return count == n
 
         return self.quantify(
-            quantifier, f"at least {n}", prefix=f"for at least {n} elements: "
+            quantifier, f"exactly {n}", prefix=f"for exactly {n} elements: "
         )
 
     # --- safety / debugging ---
