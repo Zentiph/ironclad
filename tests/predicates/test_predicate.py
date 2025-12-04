@@ -1,6 +1,6 @@
 """Tests for the predicate class."""
 
-from collections.abc import Sized
+from collections.abc import Iterable, Sized
 
 import pytest
 
@@ -50,10 +50,14 @@ def test_message_rendering() -> None:
     # TODO: add tests for context and tree rendering once error messages are improved
 
 
-def test_explaining_and_validating() -> None:
+def test_explain() -> None:
     pred = Predicate(is_pos, "is positive", "expected positive number, got {x}")
     assert pred.explain(1) is None
     assert pred.explain(-1) == "expected positive number, got -1"
+
+
+def test_validate() -> None:
+    pred = Predicate(is_pos, "is positive", "expected positive number, got {x}")
     assert pred.validate(1) == 1
     with pytest.raises(ValueError):
         pred.validate(-1)
@@ -113,6 +117,34 @@ def test_implies() -> None:
     assert combined(4) is True
     assert combined(1) is False
     assert combined(-1) is True
+
+
+def test_clone() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    clone = pred.clone()
+    assert clone.name == pred.name
+    assert clone.msg == pred.msg
+    assert clone.func == pred.func
+    # ensuring that the context is copied
+    assert clone.render_with_context(0) == clone.render_with_context(0)
+
+
+def test_lift() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    def check_all_positive(xs: Iterable[int]) -> bool:
+        return all(pred.func(x) for x in xs)
+
+    lifted = pred.lift(
+        check_all_positive,
+        "all positive",
+        "expected positive element",
+    )
+    assert lifted([1, 1]) is True
+    assert lifted([0, 1]) is False
+    # check the output message is longer (due to increased context chain)
+    assert len(lifted.render_with_context()) > len(pred.render_with_context())
 
 
 if __name__ == "__main__":

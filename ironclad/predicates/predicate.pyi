@@ -72,6 +72,12 @@ class Predicate(Generic[T]):
     def __rxor__(self, other: Predicate[T]) -> Predicate[T]: ...
     def xor(self, other: Predicate[T]) -> Predicate[T]: ...
     def implies(self, other: Predicate[T]) -> Predicate[T]: ...
+    def clone(
+        self,
+        *,
+        name: str | None = None,
+        msg: str | Callable[[T | None], str] | None = None,
+    ) -> Predicate[T]: ...
     @overload
     def lift(
         self,
@@ -88,12 +94,6 @@ class Predicate(Generic[T]):
         name: str | None,
         msg: str | Callable[[U | None], str],
     ) -> Predicate[U]: ...
-    def clone(
-        self,
-        *,
-        name: str | None = None,
-        msg: str | Callable[[T | None], str] | None = None,
-    ) -> Predicate[T]: ...
     def on(
         self,
         getter: Callable[[Obj], T],

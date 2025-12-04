@@ -297,7 +297,31 @@ class Predicate(Generic[T]):
         """
         return (~self) | other
 
-    # --- lifters ---
+    # --- lifters/cloning ---
+    def clone(
+        self,
+        *,
+        name: str | None = None,
+        msg: str | Callable[[T | None], str] | None = None,
+    ) -> Predicate[T]:
+        """Clone this predicate.
+
+        Args:
+            name (str | None, optional): The new predicate's name.
+                Copies the old one if None or "". Defaults to None.
+            msg (str | Callable[[Any | None], str], None, optional):
+                The new predicate's failure message.
+                Copies the old one if None. Defaults to None.
+
+        Returns:
+            Predicate[T]: The cloned predicate.
+        """
+        p = Predicate(
+            self.__func, name or self.__name, msg if msg is not None else self.__msg
+        )
+        p.__context = self.__context
+        return p
+
     def lift(
         self,
         func: Callable[[Any], bool],
@@ -327,30 +351,6 @@ class Predicate(Generic[T]):
         pred.__func = func
         pred.__context = (*self.__context, self)
         return pred
-
-    def clone(
-        self,
-        *,
-        name: str | None = None,
-        msg: str | Callable[[T | None], str] | None = None,
-    ) -> Predicate[T]:
-        """Clone this predicate.
-
-        Args:
-            name (str | None, optional): The new predicate's name.
-                Copies the old one if None or "". Defaults to None.
-            msg (str | Callable[[Any | None], str], None, optional):
-                The new predicate's failure message.
-                Copies the old one if None. Defaults to None.
-
-        Returns:
-            Predicate[T]: The cloned predicate.
-        """
-        p = Predicate(
-            self.__func, name or self.__name, msg if msg is not None else self.__msg
-        )
-        p.__context = self.__context
-        return p
 
     def on(
         self,
