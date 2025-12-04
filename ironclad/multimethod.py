@@ -12,12 +12,13 @@ import functools
 import inspect
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
 from ._utils import as_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 __all__ = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
 
