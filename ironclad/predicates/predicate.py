@@ -437,7 +437,12 @@ class Predicate(Generic[T]):
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
+
+        Raises:
+            ValueError: If n is less than 0.
         """
+        if n < 0:
+            raise ValueError("n must be nonnegative")
 
         def quantifier(bits: Iterable[bool]) -> bool:
             size = None if not isinstance(bits, Sized) else len(bits)
@@ -463,13 +468,18 @@ class Predicate(Generic[T]):
 
         Returns:
             Predicate[Iterable[T]]: The new predicate.
+
+        Raises:
+            ValueError: If n is less than 0.
         """
+        if n < 0:
+            raise ValueError("n must be nonnegative")
 
         def quantifier(bits: Iterable[bool]) -> bool:
             count = 0
             for b in bits:
                 count += 1 if b else 0
-                if count >= n:
+                if count > n:
                     return False
             return True
 
