@@ -326,6 +326,7 @@ class Predicate(Generic[T]):
         """
         pred = self.clone(name=name, msg=msg)
         pred.__func = func
+        pred.__context = (*self.__context, self)
         return pred
 
     def clone(
@@ -375,7 +376,7 @@ class Predicate(Generic[T]):
         self, prefix: str, /
     ) -> str | Callable[[Iterable[T] | None], str]:
         if isinstance(self.__msg, str):
-            return self.__msg
+            return prefix + self.__msg
 
         def new_msg(it: Iterable[T] | None) -> str:
             sample: T | None = None
