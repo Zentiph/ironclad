@@ -18,7 +18,7 @@ from typing import (
     get_type_hints,
 )
 
-from ._utils import as_cached_predicate, matches_hint, spec_contains_int
+from ._utils import as_predicate, matches_hint, spec_contains_int
 from .predicates import Predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
@@ -197,7 +197,7 @@ def enforce_types(
 
         # compile once
         validators: dict[str, Predicate[Any]] = {
-            name: as_cached_predicate(spec, options) for name, spec in types.items()
+            name: as_predicate(spec, options) for name, spec in types.items()
         }
 
         @functools.wraps(func)

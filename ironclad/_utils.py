@@ -28,6 +28,14 @@ _CACHE_SIZE = 2048
 
 
 def spec_contains_int(spec: Any) -> bool:
+    """Check if a type spec contains an int.
+
+    Args:
+        spec (Any): The type spec to check
+
+    Returns:
+        bool: Whether the spec contains an int.
+    """
     if spec is int:
         return True
 
@@ -150,10 +158,20 @@ def _hint_pred_uncached(
 
 
 def matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
+    """Check if an object matches the given type hint.
+
+    Args:
+        x (Any): The object to check.
+        hint (Any): The type hint.
+        opts (EnforceOptions): Type hint enforcement options.
+
+    Returns:
+        bool: Whether the object matches the hint.
+    """
     if hint is Any:  # can be anything
         return True
 
-    if hint is None or hint is type(None):  # hint is None, so x must be
+    if hint is None or isinstance(hint, type(None)):  # hint is None, so x must be
         return x is None
 
     origin = get_origin(hint)
@@ -167,7 +185,16 @@ def matches_hint(x: Any, hint: Any, opts: EnforceOptions, /) -> bool:
     return _matches_normal(x, hint, origin, opts)
 
 
-def as_cached_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
+def as_predicate(spec: Any, options: EnforceOptions) -> Predicate[Any]:
+    """Return a type spec as a predicate.
+
+    Args:
+        spec (Any): The type spec to convert.
+        options (EnforceOptions): Type enforcement options.
+
+    Returns:
+        Predicate[Any]: The predicate. This object will be cached if possible.
+    """
     if isinstance(spec, Predicate):
         return spec
     try:

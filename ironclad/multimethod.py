@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from ._utils import as_cached_predicate
+from ._utils import as_predicate
 from .repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
@@ -81,7 +81,7 @@ class Multimethod:
             )
 
             norm_annotation[name] = annotation
-            validators[name] = as_cached_predicate(annotation, self.options)
+            validators[name] = as_predicate(annotation, self.options)
 
         self._implementations.append((sig, validators, func, norm_annotation))
         return self
