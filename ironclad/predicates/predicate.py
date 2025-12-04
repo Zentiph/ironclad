@@ -69,6 +69,15 @@ class Predicate(Generic[T]):
 
     # --- props --- #
     @property
+    def func(self) -> Callable[[T], bool]:
+        """Get the function this predicate runs to test values.
+
+        Returns:
+            Callable[[T], bool]: The function this predicate uses.
+        """
+        return self.__func
+
+    @property
     def name(self) -> str:
         """Get the name of this predicate.
 
@@ -301,6 +310,9 @@ class Predicate(Generic[T]):
 
         This is the ideal way to create a predicate based on another one, because
         this method adds the previous predicate to the new predicate's failure context.
+
+        When lifting a predicate, the new function should utilize the original
+        predicate's function in order to maintain a semantic hierarchy.
 
         Args:
             func (Callable[[Any], bool]): The new predicate function.
