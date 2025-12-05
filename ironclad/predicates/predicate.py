@@ -523,10 +523,11 @@ class Predicate(Generic[T]):
         """Raise a TypeError if a predicate object is converted to a bool.
 
         Raises:
-            TypeError: If this function is called
+            TypeError: If this function is called.
         """
         raise TypeError(
-            "Predicate has no truth value; did you mean to call it? (e.g. pred(value))"
+            "Predicate itself has no truth value; "
+            "did you mean to call it? (e.g. pred(value))"
         )
 
     def __repr__(self) -> str:

@@ -276,5 +276,12 @@ def test_exactly() -> None:
         pred.exactly(-10)
 
 
+def test_bool() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    with pytest.raises(TypeError):
+        bool(pred)
+
+
 if __name__ == "__main__":
     pytest.main()
