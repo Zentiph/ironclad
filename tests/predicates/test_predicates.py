@@ -72,5 +72,15 @@ def test_positive() -> None:
     assert predicates.POSITIVE(0) is False
 
 
+def test_negative() -> None:
+    assert predicates.NEGATIVE(1) is False
+    assert predicates.NEGATIVE(2.3) is False
+    assert predicates.NEGATIVE(float("inf")) is False
+    assert predicates.NEGATIVE(-0.001) is True
+    assert predicates.NEGATIVE(-10) is True
+    assert predicates.NEGATIVE(float("-inf")) is True
+    assert predicates.NEGATIVE(0) is False
+
+
 if __name__ == "__main__":
     pytest.main()
