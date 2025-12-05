@@ -510,7 +510,7 @@ class Predicate(Generic[T]):
             count = 0
             for b in bits:
                 count += 1 if b else 0
-                if count >= n:
+                if count > n:
                     return False
             return count == n
 
