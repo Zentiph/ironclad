@@ -147,5 +147,134 @@ def test_lift() -> None:
     assert len(lifted.render_with_context()) > len(pred.render_with_context())
 
 
+def test_on() -> None:
+    class Data:
+        def __init__(self, data: int) -> None:
+            self.data = data
+
+    data1 = Data(3)
+    data2 = Data(-1)
+    pred = Predicate(is_pos, "is positive")
+
+    on_data: Predicate[Data] = pred.on(lambda o: o.data)
+    assert on_data(data1) is True
+    assert on_data(data2) is False
+
+
+def test_quantify() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    def only_one(xs: Iterable[bool]) -> bool:
+        found = False
+        for x in xs:
+            if x and found:
+                return False
+            if x and not found:
+                found = True
+        return found
+
+    quantified = pred.quantify(only_one, "only one", prefix="only one element: ")
+    assert quantified([10, -1, -1]) is True
+    assert quantified([-1, -1, -1]) is False
+    assert quantified([10, -1, 10]) is False
+
+
+def test_all() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    quantified = pred.all()
+    assert quantified([1, 2, 3]) is True
+    assert quantified([0, 1, 2]) is False
+    assert quantified([-1, 0, 1]) is False
+    assert quantified([-2, -1, 0]) is False
+
+
+def test_any() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    quantified = pred.any()
+    assert quantified([1, 2, 3]) is True
+    assert quantified([0, 1, 2]) is True
+    assert quantified([-1, 0, 1]) is True
+    assert quantified([-2, -1, 0]) is False
+
+
+def test_at_least() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    at_least_two = pred.at_least(2)
+    assert at_least_two([1, 2, 3]) is True
+    assert at_least_two([0, 1, 2]) is True
+    assert at_least_two([-1, 0, 1]) is False
+    assert at_least_two([-2, -1, 0]) is False
+
+    at_least_one = pred.at_least(1)
+    assert at_least_one([1, 2, 3]) is True
+    assert at_least_one([0, 1, 2]) is True
+    assert at_least_one([-1, 0, 1]) is True
+    assert at_least_one([-2, -1, 0]) is False
+
+    at_least_zero = pred.at_least(0)
+    assert at_least_zero([1, 2, 3]) is True
+    assert at_least_zero([0, 1, 2]) is True
+    assert at_least_zero([-1, 0, 1]) is True
+    assert at_least_zero([-2, -1, 0]) is True
+
+    with pytest.raises(ValueError):
+        pred.at_least(-10)
+
+    # unreachable n, always False
+    at_least_five = pred.at_least(5)
+    assert at_least_five([1, 1, 1]) is False
+
+
+def test_at_most() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    at_most_two = pred.at_most(2)
+    assert at_most_two([1, 2, 3]) is False
+    assert at_most_two([0, 1, 2]) is True
+    assert at_most_two([-1, 0, 1]) is True
+    assert at_most_two([-2, -1, 0]) is True
+
+    at_most_one = pred.at_most(1)
+    assert at_most_one([1, 2, 3]) is False
+    assert at_most_one([0, 1, 2]) is False
+    assert at_most_one([-1, 0, 1]) is True
+    assert at_most_one([-2, -1, 0]) is True
+
+    at_most_zero = pred.at_most(0)
+    assert at_most_zero([1, 2, 3]) is False
+    assert at_most_zero([0, 1, 2]) is False
+    assert at_most_zero([-1, 0, 1]) is False
+    assert at_most_zero([-2, -1, 0]) is True
+
+    with pytest.raises(ValueError):
+        pred.at_most(-10)
+
+    # unreachable n, always True
+    at_most_five = pred.at_most(5)
+    assert at_most_five([1, 1, 1]) is True
+
+
+def test_exactly() -> None:
+    pred = Predicate(is_pos, "is positive")
+
+    exactly_two = pred.exactly(2)
+    assert exactly_two([0, 0, 1, 1]) is True
+    assert exactly_two([0, 0, 0, 1]) is False
+    assert exactly_two([1, 1, 1, 1]) is False
+
+    exactly_zero = pred.exactly(0)
+    assert exactly_zero([0, 0, 0, 0]) is True
+    assert exactly_zero([0, 0, 0, 1]) is False
+    assert exactly_zero([0, 0, 1, 1]) is False
+    assert exactly_zero([0, 1, 1, 1]) is False
+    assert exactly_zero([1, 1, 1, 1]) is False
+
+    with pytest.raises(ValueError):
+        pred.exactly(-10)
+
+
 if __name__ == "__main__":
     pytest.main()
