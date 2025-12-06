@@ -22,6 +22,12 @@ from .predicates import (
     POSITIVE as POSITIVE,
 )
 from .predicates import (
+    all_of as all_of,
+)
+from .predicates import (
+    any_of as any_of,
+)
+from .predicates import (
     between as between,
 )
 from .predicates import (
