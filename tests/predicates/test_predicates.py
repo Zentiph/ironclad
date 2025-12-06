@@ -82,5 +82,31 @@ def test_negative() -> None:
     assert predicates.NEGATIVE(0) is False
 
 
+def test_all_of() -> None:
+    pred1 = predicates.Predicate[int](lambda x: x > 0, "is positive")
+    pred2 = predicates.Predicate[int](lambda x: x % 2 == 0, "divisible by 2")
+    pred3 = predicates.Predicate[int](lambda x: x % 3 == 0, "divisible by 3")
+
+    combined = predicates.all_of(pred1, pred2, pred3)
+    assert combined(6) is True
+    assert combined(-6) is False
+    assert combined(8) is False
+    assert combined(3) is False
+    assert combined(-1) is False
+
+
+def test_any_of() -> None:
+    pred1 = predicates.Predicate[int](lambda x: x > 0, "is positive")
+    pred2 = predicates.Predicate[int](lambda x: x % 2 == 0, "divisible by 2")
+    pred3 = predicates.Predicate[int](lambda x: x % 3 == 0, "divisible by 3")
+
+    combined = predicates.any_of(pred1, pred2, pred3)
+    assert combined(6) is True
+    assert combined(-6) is True
+    assert combined(8) is True
+    assert combined(3) is True
+    assert combined(-1) is False
+
+
 if __name__ == "__main__":
     pytest.main()
