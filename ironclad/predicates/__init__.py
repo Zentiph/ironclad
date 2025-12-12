@@ -20,6 +20,7 @@ __all__ = [
     "equals",
     "instance_of",
     "length",
+    "length_between",
     "one_of",
     "regex",
 ]
@@ -38,6 +39,7 @@ from .predicates import (
     equals,
     instance_of,
     length,
+    length_between,
     one_of,
     regex,
 )
