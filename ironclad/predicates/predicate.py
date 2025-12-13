@@ -20,7 +20,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 Obj = TypeVar("Obj", bound=object)
 
-ExceptionFactory = Callable[[str, U, str], type[BaseException]]
+ExceptionFactory = Callable[[str, U, str], BaseException]
 
 
 class Predicate(Generic[T]):

@@ -2,7 +2,7 @@ from typing import Final
 
 __all__: Final[list[str]]
 
-# thanks ruff formatter :)
+# thanks ruff formatter, very cool :)
 from .predicate import Predicate as Predicate
 from .predicates import ALWAYS as ALWAYS
 from .predicates import NEGATIVE as NEGATIVE

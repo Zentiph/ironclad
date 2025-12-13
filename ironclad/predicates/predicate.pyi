@@ -9,7 +9,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 Obj = TypeVar("Obj", bound=object)
 
-ExceptionFactory: TypeAlias = Callable[[str, U, str], type[BaseException]]
+ExceptionFactory: TypeAlias = Callable[[str, U, str], BaseException]
 
 class Predicate(Generic[T]):
     __slots__: tuple[str, ...]
