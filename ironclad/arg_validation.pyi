@@ -7,6 +7,8 @@ from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 P = ParamSpec("P")
 T = TypeVar("T")
 
+Coercer = Callable[[Any], Any]
+
 __all__: Final[list[str]]
 
 def enforce_types(
@@ -18,8 +20,8 @@ def enforce_annotations(
     *, check_return: bool = True
 ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 def coerce_types(
-    **coercers: Callable[[object], object],
-) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
+    **coercers: Coercer,
+) -> Callable[[Callable[P, T]], Callable[..., T]]: ...
 def enforce_values(
     **predicate_map: Predicate[Any],
 ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...

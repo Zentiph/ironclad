@@ -28,6 +28,8 @@ __all__ = ["coerce_types", "enforce_annotations", "enforce_types", "enforce_valu
 P = ParamSpec("P")
 T = TypeVar("T")
 
+Coercer = Callable[[Any], Any]
+
 
 _SHORT = Repr()
 _SHORT.maxstring = 80
@@ -272,19 +274,19 @@ def enforce_annotations(
 
 
 def coerce_types(
-    **coercers: Callable[[object], object],
-) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    **coercers: Coercer,
+) -> Callable[[Callable[P, T]], Callable[..., T]]:
     """Decorator that coerces the types of function parameters using coercer functions.
 
     This decorator is particularly useful for coercing string arguments into
     their proper types when using CLI/ENV arguments, web handlers, enums, and JSONs.
 
     Args:
-        coercers (Callable[[object], object]): A mapping of argument names
+        coercers (Coercer): A mapping of argument names
             to coercer functions
     """
 
-    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+    def decorator(func: Callable[P, T]) -> Callable[..., T]:
         sig = inspect.signature(func)
         plan = _make_plan(sig)
 
