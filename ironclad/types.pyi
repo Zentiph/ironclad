@@ -5,7 +5,11 @@ __all__: Final[list[str]]
 
 class EnforceOptions:
     def __init__(
-        self, *, allow_subclasses: bool, check_defaults: bool, strict_bools: bool
+        self,
+        *,
+        allow_subclasses: bool = True,
+        check_defaults: bool = True,
+        strict_bools: bool = True,
     ) -> None: ...
 
     allow_subclasses: bool
