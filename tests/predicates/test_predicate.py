@@ -1,6 +1,6 @@
 """Tests for the predicate class."""
 
-from collections.abc import Iterable, Sized
+from collections.abc import Callable, Iterable, Sized
 
 import pytest
 
@@ -15,14 +15,21 @@ def longer_than_three(collection: Sized) -> bool:
     return len(collection) > 3
 
 
+def make_positive(
+    msg: str | Callable[[int | None], str] | None = None,
+) -> Predicate[int]:
+    """Factory to keep predicates consistent across tests."""
+    return Predicate(is_pos, "is positive", msg)
+
+
 def test_call() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
     assert pred(1) is True, "Predicate call did not return the expected value."
     assert pred(-1) is False, "Predicate call did not return the expected value."
 
 
 def test_getters() -> None:
-    pred1 = Predicate(is_pos, "is positive")
+    pred1 = make_positive()
     assert pred1.func == is_pos
     assert pred1.name == "is positive"
     assert pred1.msg == "is positive"  # takes name if None
@@ -36,7 +43,7 @@ def test_getters() -> None:
 
 
 def test_message_rendering() -> None:
-    pred1 = Predicate(is_pos, "is positive", "expected positive number, got {x}")
+    pred1 = make_positive("expected positive number, got {x}")
     assert pred1.render_msg(-2) == "expected positive number, got -2"
 
     pred2 = Predicate(
@@ -47,8 +54,6 @@ def test_message_rendering() -> None:
     )
     assert pred2.render_msg([]) == "expected collection with length > 3, got length 0"
 
-    # TODO: add tests for context and tree rendering once error messages are improved
-
 
 def test_explain() -> None:
     pred = Predicate(is_pos, "is positive", "expected positive number, got {x}")
@@ -57,20 +62,20 @@ def test_explain() -> None:
 
 
 def test_validate() -> None:
-    pred = Predicate(is_pos, "is positive", "expected positive number, got {x}")
+    pred = make_positive("expected positive number, got {x}")
     assert pred.validate(1) == 1
     with pytest.raises(ValueError):
         pred.validate(-1)
 
 
 def test_with_changers() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
     assert pred.with_name("abc").name == "abc"
     assert pred.with_msg("xyz").msg == "xyz"
 
 
 def test_and() -> None:
-    pred1 = Predicate(is_pos, "is positive")
+    pred1 = make_positive()
     pred2 = Predicate[int](lambda x: not is_pos(x), "is not positive")
 
     combined = pred1 & pred2
@@ -80,7 +85,7 @@ def test_and() -> None:
 
 
 def test_or() -> None:
-    pred1 = Predicate(is_pos, "is positive")
+    pred1 = make_positive()
     pred2 = Predicate[int](lambda x: x < 0, "is negative")
 
     combined = pred1 | pred2
@@ -91,7 +96,7 @@ def test_or() -> None:
 
 
 def test_invert() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     inverted = ~pred
     assert inverted(1) is False
@@ -100,7 +105,7 @@ def test_invert() -> None:
 
 
 def test_xor() -> None:
-    pred1 = Predicate(is_pos, "is positive")
+    pred1 = make_positive()
     pred2 = Predicate[int](lambda x: x < 0, "is negative")
 
     combined = pred1 ^ pred2
@@ -110,7 +115,7 @@ def test_xor() -> None:
 
 
 def test_implies() -> None:
-    pred1 = Predicate(is_pos, "is positive")
+    pred1 = make_positive()
     pred2 = Predicate[int](lambda x: x > 3, "greater than 3")
 
     combined = pred1.implies(pred2)
@@ -120,7 +125,7 @@ def test_implies() -> None:
 
 
 def test_clone() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     clone = pred.clone()
     assert clone.name == pred.name
@@ -131,7 +136,7 @@ def test_clone() -> None:
 
 
 def test_lift() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     def check_all_positive(xs: Iterable[int]) -> bool:
         return all(pred.func(x) for x in xs)
@@ -154,7 +159,7 @@ def test_on() -> None:
 
     data1 = Data(3)
     data2 = Data(-1)
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     on_data: Predicate[Data] = pred.on(lambda o: o.data)
     assert on_data(data1) is True
@@ -162,7 +167,7 @@ def test_on() -> None:
 
 
 def test_quantify() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     def only_one(xs: Iterable[bool]) -> bool:
         found = False
@@ -180,7 +185,7 @@ def test_quantify() -> None:
 
 
 def test_all() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     quantified = pred.all()
     assert quantified([1, 2, 3]) is True
@@ -190,7 +195,7 @@ def test_all() -> None:
 
 
 def test_any() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     quantified = pred.any()
     assert quantified([1, 2, 3]) is True
@@ -200,7 +205,7 @@ def test_any() -> None:
 
 
 def test_at_least() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     at_least_two = pred.at_least(2)
     assert at_least_two([1, 2, 3]) is True
@@ -229,7 +234,7 @@ def test_at_least() -> None:
 
 
 def test_at_most() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     at_most_two = pred.at_most(2)
     assert at_most_two([1, 2, 3]) is False
@@ -258,7 +263,7 @@ def test_at_most() -> None:
 
 
 def test_exactly() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     exactly_two = pred.exactly(2)
     assert exactly_two([0, 0, 1, 1]) is True
@@ -277,10 +282,76 @@ def test_exactly() -> None:
 
 
 def test_bool() -> None:
-    pred = Predicate(is_pos, "is positive")
+    pred = make_positive()
 
     with pytest.raises(TypeError):
         bool(pred)
+
+
+def test_render_with_context_and_tree() -> None:
+    base = make_positive("expected positive number, got {x}")
+    lifted = base.lift(
+        lambda x: base.func(x) and x % 2 == 0,
+        "even positive",
+        "expected even positive number",
+    )
+
+    contextual = lifted.render_with_context(3)
+    assert contextual.startswith("expected even positive number [via ")
+    assert "'is positive' -> 'even positive'" in contextual
+
+    tree = lifted.render_tree(3)
+    assert "even positive: expected even positive number" in tree
+    assert "from is positive: expected positive number, got 3" in tree
+
+
+def test_quantify_uses_callable_message_prefix() -> None:
+    pred = make_positive(lambda x: f"got invalid value {x}")
+    quantified = pred.any()
+
+    msg = quantified.render_msg([1, -1])
+    assert msg == "for at least one element: got invalid value 1"
+
+
+def test_validate_with_exception_factory() -> None:
+    pred = make_positive("expected positive number, got {x}")
+
+    def factory(label: str, value: int, message: str) -> RuntimeError:
+        return RuntimeError(f"{label}|{value}|{message}")
+
+    with pytest.raises(
+        RuntimeError, match=r"my_value\|-1\|my_value: expected positive number, got -1"
+    ):
+        pred.validate(-1, label="my_value", exc=factory)
+
+
+def test_repr_includes_key_details() -> None:
+    pred = make_positive("expected positive number")
+    rep = repr(pred)
+    assert "Predicate" in rep
+    assert "is positive" in rep
+    assert "is_pos" in rep
+    assert "expected positive number" in rep
+
+
+def test_clone_context_isolated_from_future_lifts() -> None:
+    base = make_positive()
+    under_ten = base.lift(
+        lambda x: base.func(x) and x < 10, "under ten", "expected < 10"
+    )
+    clone = under_ten.clone(name="clone < 10")
+    even_under_ten = under_ten.lift(
+        lambda x: under_ten.func(x) and x % 2 == 0,
+        "even under ten",
+        "expected even number < 10",
+    )
+
+    clone_msg = clone.render_with_context(5)
+    assert "'is positive' -> 'clone < 10'" in clone_msg
+
+    new_lift_msg = even_under_ten.render_with_context(8)
+    assert "'is positive' -> 'under ten' -> 'even under ten'" in new_lift_msg
+    assert "even under ten" not in clone_msg
 
 
 if __name__ == "__main__":
