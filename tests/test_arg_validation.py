@@ -1,7 +1,8 @@
 """Tests for argument validation decorators."""
 
 # DISABLE TYPE CHECKING ERRORS FOR MISSING
-# ANNOTATIONS FOR THIS FILE
+# ANNOTATIONS FOR THIS FILE DUE TO THE NATURE
+# OF THE TESTS
 # mypy: disable-error-code=no-untyped-def
 # pyright: reportUnknownParameterType=false
 # pyright: reportMissingParameterType=false
