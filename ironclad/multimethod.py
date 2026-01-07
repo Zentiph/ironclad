@@ -6,6 +6,13 @@ The Multimethod, an object that creates runtime overloads with type-hint matchin
 :license: MIT; see LICENSE.md for more details
 """
 
+# TODO: see if it's possible to make Multimethod type-strict with calls
+# e.g. if two overloads (one for int, one for str) then make type-checkers
+#      angry if call tried with a float
+
+# TODO: raise an error if two overloads with identical param
+#       type specs are created
+
 from __future__ import annotations
 
 import functools
@@ -30,8 +37,6 @@ class InvalidOverloadError(TypeError):
 class Multimethod:
     """Runtime overloads with type-hint matching."""
 
-    __slots__ = ("__name__", "_implementations", "options")
-
     def __init__(
         self,
         func: Callable[..., Any] | None = None,
@@ -47,7 +52,7 @@ class Multimethod:
             options (EnforceOptions, optional): Type enforcement options.
                 Defaults to DEFAULT_ENFORCE_OPTIONS.
         """
-        self._implementations: list[
+        self.__implementations: list[
             tuple[
                 inspect.Signature,
                 dict[str, Callable[[Any], bool]],
@@ -84,7 +89,7 @@ class Multimethod:
             norm_annotation[name] = annotation
             validators[name] = as_predicate(annotation, self.options)
 
-        self._implementations.append((sig, validators, func, norm_annotation))
+        self.__implementations.append((sig, validators, func, norm_annotation))
         return self
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -98,7 +103,7 @@ class Multimethod:
         """
         matches: list[tuple[int, Callable[..., Any]]] = []
 
-        for sig, validators, func, norm_annotation in self._implementations:
+        for sig, validators, func, norm_annotation in self.__implementations:
             try:
                 bound = sig.bind(*args, **kwargs)
             except TypeError:
@@ -119,7 +124,7 @@ class Multimethod:
                 matches.append((score, func))
 
         if not matches:
-            want = " | ".join(self.__sig_str(sig) for sig, *_ in self._implementations)
+            want = " | ".join(self.__sig_str(sig) for sig, *_ in self.__implementations)
             got = ", ".join(type_repr(type(arg)) for arg in args)
             if kwargs:
                 got += (", " if got else "") + "**kwargs"
@@ -142,7 +147,7 @@ class Multimethod:
             )
             parts.append(f"{name}: {type_repr(annotation)}")
 
-        return f"{self.__name__}({'(' + ', '.join(parts) + ')'})"
+        return f"{self.__name__}({', '.join(parts)})"
 
 
 def runtime_overload(
