@@ -23,7 +23,7 @@ from .types import ClassInfo
 
 __all__ = ["class_info_to_str", "type_repr"]
 
-_UNION_TYPES = (Union, getattr(types, "UnionType", Union))  # pylint:disable=consider-alternative-union-syntax
+_UNION_TYPES = (Union, getattr(types, "UnionType", Union))
 
 
 def _name_of_type(tp: type) -> str:
@@ -218,6 +218,10 @@ def type_repr(hint: Any, /) -> str:
     Returns:
         str: A repr of the hint given.
     """
+    special_result = _special_repr(hint)
+    if special_result:
+        return special_result
+
     normal_repr = _normal_type_repr(hint)
     if normal_repr:
         return normal_repr
@@ -232,10 +236,6 @@ def type_repr(hint: Any, /) -> str:
     collection_type_result = _collection_type_repr(hint, origin)
     if collection_type_result:
         return collection_type_result
-
-    special_result = _special_repr(hint)
-    if special_result:
-        return special_result
 
     fallback_result = _fallback_repr(hint)
     if fallback_result:
