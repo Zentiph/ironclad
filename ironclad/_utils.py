@@ -128,7 +128,10 @@ def _matches_normal(x: Any, hint: Any, origin: Any, opts: EnforceOptions, /) -> 
         return isinstance(x, hint)
     except TypeError:
         # fallback for typing objects on older Python versions
-        return origin is not None and matches_hint(x, origin, opts)
+        # BUT don't throw away type args (like list[int])
+        if origin is not None and not get_args(hint):
+            return matches_hint(x, origin, opts)
+        return False
 
 
 @functools.lru_cache(maxsize=_CACHE_SIZE)

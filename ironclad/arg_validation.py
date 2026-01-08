@@ -226,8 +226,8 @@ def enforce_types(
 
                     raise TypeError(
                         f"{func.__qualname__}(): '{name}' expected "
-                        f"{pred.render_msg(val)} "
-                        f"{conditions if conditions != '()' else ''}, "
+                        f"{pred.render_msg(val)}"
+                        f"{' ' + conditions if conditions != '()' else ''}, "
                         f"got '{type_repr(type(val))}' with value {_SHORT.repr(val)}"
                     )
 
