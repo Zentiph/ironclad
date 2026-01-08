@@ -32,7 +32,7 @@ __title__ = "ironclad"
 __author__ = "Zentiph"
 __license__ = "MIT"
 __copyright__ = "Copyright 2025-present Zentiph"
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
