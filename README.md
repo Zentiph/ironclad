@@ -36,49 +36,56 @@ git clone https://github.com/Zentiph/ironclad
 ## Quick Start
 ### Importing the library:
 ```python
-import ironclad as ic
+>>> import ironclad as ic
 ```
-### Creating strict type enforcements:
+### Ensuring strict type enforcements on functions:
 ```python
-# enforcing types with instance/type spec checks
-@ic.enforce_types(price=float, tax_rate=float)
-def add_sales_tax(price, tax_rate):
-    return price * (1 + tax_rate)
-
-add_sales_tax(50.0, 0.08)    # OK: 54.0
-add_sales_tax(50.0, "0.08")  # TypeError
-                             # (with better diagnostics)
-
-# enforcing types with type annotations
-@ic.enforce_annotations()
-def get_even(l: list[int]) -> list[int]:
-    return [e for e in l if e % 2 == 0]
-
-get_even([1, 2, 3])        # OK: [2]
-get_even([1.0, 2.0, 3.0])  # TypeError
-                           # (with better diagnostics)
+>>> # enforcing types with instance/type spec checks
+>>> @ic.enforce_types(price=float, tax_rate=float)
+... def add_sales_tax(price, tax_rate):
+...     return price * (1 + tax_rate)
+...
+>>> add_sales_tax(50.0, 0.08)
+54.0
+>>> add_sales_tax(50.0, "0.08")
+TypeError: add_sales_tax(): 'tax_rate' expected 'float', got 'str' with value '0.08'
+>>>
+>>> # enforcing types with type annotations
+>>> @ic.enforce_annotations()
+... def get_even(l: list[int]) -> list[int]:
+...     return [e for e in l if e % 2 == 0]
+...
+>>> get_even([1, 2, 3])
+[2]
+>>> get_even([1.0, 2.0, 3.0])
+TypeError: get_even(): 'l' expected 'list[int]', got 'list' with value [1.0, 2.0, 3.0]
 ```
 ### Creating type-enforced runtime overloads:
 ```python
-@ic.runtime_overload
-def describe(x: int):
-    return f"int: {x}"
-
-@describe.overload
-def _(x: str):
-    return f"str: '{x}'"
-
-describe(1)     # OK: 'int: 1'
-describe("hi")  # OK: "str: 'hi'"
-describe(2.3)   # InvalidOverloadError
+>>> @ic.runtime_overload
+... def describe(x: int):
+...     return f"int: {x}"
+...
+>>> @describe.overload
+... def _(x: str):
+...     return f"str: '{x}'"
+...
+>>> describe(1)
+'int: 1'
+>>> describe("hi")
+"str: 'hi'"
+>>> describe(2.3)
+InvalidOverloadError: No overload of describe() matches (float). Candidates: describe(x: int) | describe(x: str)
 ```
 ### Creating predicates
 ```python
-is_pos = ic.predicates.Predicate[int](
-    lambda x: x > 0, "is positive"
-)
-is_pos(4)   # True
-is_pos(-1)  # False
+>>> is_pos = ic.predicates.Predicate[int](
+...     lambda x: x > 0, "is positive"
+... )
+>>> is_pos(4)
+True
+>>> is_pos(-1)
+False
 ```
 
 ## Contributions

@@ -224,6 +224,9 @@ def enforce_types(
                         conditions += "no bools as ints"
                     conditions += ")"
 
+                    # TODO show generic typed types for 'got' section
+                    #      like list[int] or tuple[int, str]
+                    #      (right now it just shows list)
                     raise TypeError(
                         f"{func.__qualname__}(): '{name}' expected "
                         f"{pred.render_msg(val)}"
