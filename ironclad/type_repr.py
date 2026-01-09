@@ -1,10 +1,4 @@
-"""
-Representation tools for types and other Python features.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""Representation tools for types and other Python features."""
 
 import types
 from collections.abc import Iterable, Mapping, Sequence
@@ -22,6 +16,9 @@ from typing import (
 from .types import ClassInfo
 
 __all__ = ["class_info_to_str", "type_repr"]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
 
 _UNION_TYPES = (Union, getattr(types, "UnionType", Union))
 

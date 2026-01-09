@@ -23,8 +23,8 @@ from .arg_validation import (
 )
 from .multimethod import Multimethod as Multimethod
 from .multimethod import runtime_overload as runtime_overload
-from .repr import class_info_to_str as class_info_to_str
-from .repr import type_repr as type_repr
+from .type_repr import class_info_to_str as class_info_to_str
+from .type_repr import type_repr as type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS as DEFAULT_ENFORCE_OPTIONS
 from .types import ClassInfo as ClassInfo
 from .types import EnforceOptions as EnforceOptions

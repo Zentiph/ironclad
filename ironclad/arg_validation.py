@@ -1,10 +1,4 @@
-"""
-Argument validation functions, including type and value enforcing.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""Argument validation functions, including type and value enforcing."""
 
 import functools
 import inspect
@@ -20,10 +14,13 @@ from typing import (
 
 from ._utils import as_predicate, matches_hint, spec_contains_int
 from .predicates import Predicate
-from .repr import type_repr
+from .type_repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
 __all__ = ["coerce_types", "enforce_annotations", "enforce_types", "enforce_values"]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
 
 P = ParamSpec("P")
 T = TypeVar("T")

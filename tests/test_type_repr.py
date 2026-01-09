@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypeVar
 
-from ironclad.repr import class_info_to_str, type_repr
+from ironclad.type_repr import class_info_to_str, type_repr
 
 
 class Custom:

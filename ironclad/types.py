@@ -1,16 +1,13 @@
-"""
-Types for ironclad.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""Types for ironclad."""
 
 from dataclasses import dataclass
 from types import UnionType
 from typing import TypeAlias
 
 __all__ = ["DEFAULT_ENFORCE_OPTIONS", "ClassInfo", "EnforceOptions"]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
 
 
 @dataclass(frozen=True)

@@ -16,7 +16,6 @@ __all__ = [
     "ClassInfo",
     "EnforceOptions",
     "Multimethod",
-    "class_info_to_str",
     "coerce_types",
     "enforce_annotations",
     "enforce_types",
@@ -37,7 +36,7 @@ __version__ = "0.1.0"
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 
-from . import predicates
+from . import predicates, type_repr
 from .arg_validation import (
     coerce_types,
     enforce_annotations,
@@ -45,7 +44,6 @@ from .arg_validation import (
     enforce_values,
 )
 from .multimethod import Multimethod, runtime_overload
-from .repr import class_info_to_str, type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, ClassInfo, EnforceOptions
 
 _ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]

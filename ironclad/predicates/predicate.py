@@ -1,10 +1,4 @@
-"""
-The predicate class.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""The predicate class."""
 
 from __future__ import annotations
 
@@ -15,6 +9,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 __all__ = ["Predicate"]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
+
 
 T = TypeVar("T")
 U = TypeVar("U")

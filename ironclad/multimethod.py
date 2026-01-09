@@ -1,10 +1,4 @@
-"""
-The Multimethod, an object that creates runtime overloads with type-hint matching.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""The Multimethod, an object that creates runtime overloads with type-hint matching."""
 
 # TODO: see if it's possible to make Multimethod type-strict with calls
 # e.g. if two overloads (one for int, one for str) then make type-checkers
@@ -20,7 +14,7 @@ import inspect
 from typing import TYPE_CHECKING, Any
 
 from ._utils import as_predicate
-from .repr import type_repr
+from .type_repr import type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS, EnforceOptions
 
 if TYPE_CHECKING:
@@ -28,6 +22,9 @@ if TYPE_CHECKING:
 
 
 __all__ = ["InvalidOverloadError", "Multimethod", "runtime_overload"]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
 
 
 class InvalidOverloadError(TypeError):

@@ -1,10 +1,4 @@
-"""
-Utility functions for argument type parsing and predicate conversion.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""Utility functions for argument type parsing and predicate conversion."""
 
 import functools
 from collections.abc import Mapping, MutableSequence, Sequence
@@ -21,8 +15,12 @@ from typing import (
 )
 
 from .predicates import Predicate
-from .repr import type_repr
+from .type_repr import type_repr
 from .types import EnforceOptions
+
+__author__ = "Zentiph"
+__license__ = "MIT"
+
 
 _CACHE_SIZE = 2048
 

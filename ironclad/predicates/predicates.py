@@ -1,10 +1,4 @@
-"""
-Some pre-made predicate functions for ease of use.
-
-:authors: Zentiph
-:copyright: (c) 2025-present Zentiph
-:license: MIT; see LICENSE.md for more details
-"""
+"""Some pre-made predicate functions for ease of use."""
 
 from __future__ import annotations
 
@@ -12,7 +6,7 @@ import re
 from collections.abc import Hashable, Mapping
 from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar
 
-from ..repr import class_info_to_str
+from ..type_repr import class_info_to_str
 from .predicate import Predicate
 
 if TYPE_CHECKING:
@@ -37,6 +31,9 @@ __all__ = [
     "regex",
     "values",
 ]
+
+__author__ = "Zentiph"
+__license__ = "MIT"
 
 
 class _Comparable(Protocol):

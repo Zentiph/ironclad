@@ -25,6 +25,10 @@ __all__ = [
     "regex",
 ]
 
+__author__ = "Zentiph"
+__license__ = "MIT"
+
+
 from .predicate import Predicate
 from .predicates import (
     ALWAYS,
