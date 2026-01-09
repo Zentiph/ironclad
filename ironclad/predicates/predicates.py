@@ -264,14 +264,14 @@ def keys(inner: Predicate[K]) -> Predicate[Mapping[K, Any]]:
     return inner.quantify(all, "keys", prefix="for each key: ").on(lambda m: m.keys())
 
 
-def values(inner: Predicate[Any]) -> Predicate[Mapping[Hashable, Any]]:
+def values(inner: Predicate[V]) -> Predicate[Mapping[Hashable, V]]:
     """A predicate that checks if a mapping's values match the given predicate.
 
     Args:
-        inner (Predicate[Any]): A predicate to validate each value.
+        inner (Predicate[V]): A predicate to validate each value.
 
     Returns:
-        Predicate[Mapping[Hashable, Any]]: A predicate that verifies
+        Predicate[Mapping[Hashable, V]]: A predicate that verifies
             a map based on its values.
     """
     return inner.quantify(all, "values", prefix="for each value: ").on(
