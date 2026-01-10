@@ -174,7 +174,7 @@ def any_of(*predicates: Predicate[T]) -> Predicate[T]:
 
 # --- sequence predicates ---
 def one_of(
-    values: Iterable[T],  # pylint:disable=redefined-outer-name
+    values: Iterable[T],
     /,
 ) -> Predicate[T]:
     """A predicate that checks if a value is one of the values in an iterable.
