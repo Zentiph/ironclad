@@ -44,6 +44,17 @@ class Predicate(Generic[T]):
             name (str): The name of the predicate.
             msg (str | Callable[[T | None], str] | None): The rejection message,
                 message supplier, or None for a default message. Defaults to None.
+
+        Examples:
+            ```python
+            >>> from ironclad.predicates import Predicate
+            >>>
+            >>> positive = Predicate[float](lambda x: x > 0, "positive")
+            >>> positive(4)
+            True
+            >>> positive(-2)
+            False
+            ```
         """
         self.__func = func
         self.__name = name

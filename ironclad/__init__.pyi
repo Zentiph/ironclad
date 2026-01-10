@@ -9,6 +9,7 @@ __copyright__: Final[str]
 __version__: Final[str]
 
 from . import predicates as predicates
+from . import type_repr as type_repr
 from .arg_validation import (
     coerce_types as coerce_types,
 )
@@ -23,8 +24,6 @@ from .arg_validation import (
 )
 from .multimethod import Multimethod as Multimethod
 from .multimethod import runtime_overload as runtime_overload
-from .type_repr import class_info_to_str as class_info_to_str
-from .type_repr import type_repr as type_repr
 from .types import DEFAULT_ENFORCE_OPTIONS as DEFAULT_ENFORCE_OPTIONS
 from .types import ClassInfo as ClassInfo
 from .types import EnforceOptions as EnforceOptions

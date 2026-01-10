@@ -32,7 +32,12 @@ class InvalidOverloadError(TypeError):
 
 
 class Multimethod:
-    """Runtime overloads with type-hint matching."""
+    """Runtime overloads with type-hint matching.
+
+    It is generally recommended to use the `runtime_overload` decorator instead of this
+    class directly to create runtime overloads, as the error message diagnostics are
+    better.
+    """
 
     def __init__(
         self,
@@ -42,6 +47,10 @@ class Multimethod:
         options: EnforceOptions = DEFAULT_ENFORCE_OPTIONS,
     ) -> None:
         """Runtime overloads with type-hint matching.
+
+        It is generally recommended to use the `runtime_overload` decorator instead of
+        this class directly to create runtime overloads, as the error message
+        diagnostics are better.
 
         Args:
             func (Callable[..., Any] | None, optional): The function to overload.
@@ -157,5 +166,24 @@ def runtime_overload(
         options (EnforceOptions, optional): Type enforcement options.
             Defaults to DEFAULT_ENFORCE_OPTIONS.
 
+    Examples:
+        ```python
+        >>> import ironclad as ic
+        >>>
+        >>> @ic.runtime_overload
+        ... def describe(x: int) -> str:
+        ...     return f"int: {x}"
+        ...
+        >>> @describe.overload
+        >>> def _(x: str) -> str:
+        ...     return f"str: '{x}'"
+        ...
+        >>> describe(32)
+        'int: 32'
+        >>> describe("python")
+        "str: 'python'"
+        >>> describe(2.4)
+        InvalidOverloadError: No overload of describe() matches (float). (...)
+        ```
     """
     return Multimethod(func, options=options)

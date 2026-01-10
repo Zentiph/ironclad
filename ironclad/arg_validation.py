@@ -182,6 +182,22 @@ def enforce_types(
         options (EnforceOptions, optional): Type enforcement options.
             Defaults to DEFAULT_ENFORCE_OPTIONS.
         types (ClassInfo): A mapping of argument names to expected types.
+
+    Examples:
+        ```python
+        >>> import ironclad as ic
+        >>>
+        >>> @ic.enforce_types(code=int, msg=str)
+        ... def report(code, msg="Error: {code}"):
+        ...     print(msg.format(code=code))
+        ...
+        >>> report(1)
+        Error: 1
+        >>> report(1, "Uh oh: {code}")
+        Uh oh: 1
+        >>> report(2.3)
+        TypeError: report(): 'code' expected 'int' (...), got 'float' with value 2.3
+        ```
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -246,6 +262,22 @@ def enforce_annotations(
     Args:
         check_return (bool, optional): Whether to enforce the return type.
             Defaults to True.
+
+    Examples:
+        ```python
+        >>> import ironclad as ic
+        >>>
+        >>> @ic.enforce_annotations()
+        ... def report(code: int, msg: str = "Error: {code}") -> None:
+        ...     print(msg.format(code=code))
+        ...
+        >>> report(1)
+        Error: 1
+        >>> report(1, "Uh oh: {code}")
+        Uh oh: 1
+        >>> report(2.3)
+        TypeError: report(): 'code' expected 'int' (...), got 'float' with value 2.3
+        ```
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -283,7 +315,25 @@ def coerce_types(
 
     Args:
         coercers (Coercer): A mapping of argument names
-            to coercer functions
+            to coercer functions.
+
+    Examples:
+        ```python
+        >>> import ironclad as ic
+        >>>
+        >>> @ic.coerce_types(data=str)
+        ... def parse_data(data):
+        ...     if len(data) > 3:
+        ...         return data[:3]
+        ...     return data
+        ...
+        >>> parse_data("hi")
+        'hi'
+        >>> parse_data(123)
+        '123'
+        >>> parse_data(1.7823)
+        '1.7'
+        ```
     """
 
     def decorator(func: Callable[P, T]) -> Callable[..., T]:
@@ -313,7 +363,26 @@ def enforce_values(
     """Decorator that enforces value constraints on function parameters.
 
     Args:
-        predicate_map (Predicate): A mapping of argument names to predicates
+        predicate_map (Predicate): A mapping of argument names to predicates.
+
+    Examples:
+        ```python
+        >>> import ironclad as ic
+        >>> from ironclad.predicates import Predicate
+        >>>
+        >>> nonnegative = Predicate[float](lambda x: x >= 0, "nonnegative")
+        >>>
+        >>> @ic.enforce_values(price=nonnegative)
+        ... def add_sales_tax(price: float) -> float:
+        ...     return price * 1.08
+        ...
+        >>> add_sales_tax(50)
+        54.0
+        >>> add_sales_tax(0)
+        0.0
+        >>> add_sales_tax(-2)
+        ValueError: add_sales_tax(): 'price' failed constraint: nonnegative; got -2
+        ```
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:

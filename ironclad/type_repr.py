@@ -200,6 +200,18 @@ def class_info_to_str(t: ClassInfo, /) -> str:
 
     Returns:
         str: The readable string.
+
+    Examples:
+        ```python
+        >>> from ironclad.type_repr import class_info_to_str
+        >>>
+        >>> class_info_to_str(int)
+        'int'
+        >>> class_info_to_str((int, float))
+        'int | float'
+        >>> class_info_to_str(int | float)
+        'int | float'
+        ```
     """
     if isinstance(t, type):
         return t.__name__
@@ -214,6 +226,35 @@ def type_repr(hint: Any, /) -> str:
 
     Returns:
         str: A repr of the hint given.
+
+    Examples:
+        ```python
+        >>> from ironclad.type_repr import type_repr
+        >>> from typing import Annotated, Any, Literal, TypeVar
+        >>>
+        >>> type_repr(int)
+        'int'
+        >>> type_repr(None)
+        'None'
+        >>> type_repr(Any)
+        'Any'
+        >>> type_repr(Literal[1, "a"])
+        "1 or 'a'"
+        >>> type_repr(Annotated[int, "note"])
+        'int'
+        >>> type_repr(type[int])
+        'type[int]'
+        >>> type_repr(list[int | float])
+        'list[int or float]'
+        >>> T = TypeVar("T")
+        >>> type_repr(T)
+        'T'
+        >>> Constrained = TypeVar("Constrained", int, str)
+        >>> type_repr(Constrained)
+        'int or str'
+        >>> Bounded = TypeVar("Bounded", bound=int)
+        >>> type_repr(Bounded)
+        'int'
     """
     special_result = _special_repr(hint)
     if special_result:

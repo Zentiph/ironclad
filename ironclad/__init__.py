@@ -81,5 +81,9 @@ def _parse_version(v: str) -> _VersionInfo:
 
 
 version_info = _parse_version(__version__)
+"""ironclad's current version information.
+
+Includes major, minor, micro, and release level.
+"""
 
 del _parse_version
