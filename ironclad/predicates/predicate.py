@@ -196,7 +196,7 @@ class Predicate(Generic[T]):
 
         Raises:
             BaseException: If the validation fails, the exception returned
-            by exc_factory will be raised.
+                by exc_factory will be raised.
 
         Returns:
             T: x, if the predicate accepts it.
