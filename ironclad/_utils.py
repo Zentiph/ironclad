@@ -118,10 +118,10 @@ def _matches_normal(x: Any, hint: Any, origin: Any, opts: EnforceOptions, /) -> 
     try:  # normal classes/ABCs, @runtime_checkable Protocols
         if isinstance(hint, type):
             if not opts.allow_subclasses:
-                return type(x) is hint  # pylint:disable=unidiomatic-typecheck
+                return type(x) is hint
             # separate case for restriction on bools as ints
             if opts.strict_bools and hint is int:
-                return type(x) is int  # pylint:disable=unidiomatic-typecheck
+                return type(x) is int
 
         return isinstance(x, hint)
     except TypeError:
