@@ -52,7 +52,10 @@ AnyRealNumber = int | float
 
 
 ALWAYS = Predicate[Any](lambda _: True, "always", "always true")
+"""A predicate that always evaluates to True."""
+
 NEVER = Predicate[Any](lambda _: False, "never", "always false")
+"""A predicate that always evaluates to False."""
 
 
 # --- simple predicates ---
