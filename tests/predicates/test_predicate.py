@@ -49,8 +49,10 @@ def test_message_rendering() -> None:
     pred2 = Predicate(
         longer_than_three,
         "longer than 3",
-        lambda x: "expected collection with length > 3, got length "
-        f"{len(x) if x is not None else 'None'}",
+        lambda x: (
+            "expected collection with length > 3, got length "
+            f"{len(x) if x is not None else 'None'}"
+        ),
     )
     assert pred2.render_msg([]) == "expected collection with length > 3, got length 0"
 
