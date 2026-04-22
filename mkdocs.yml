@@ -10,6 +10,7 @@ nav:
 
 theme:
   name: material
+  logo: assets/ironclad.svg
   palette:
     - scheme: default
       toggle:
